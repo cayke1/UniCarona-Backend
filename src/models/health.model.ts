@@ -3,4 +3,5 @@ export interface HealthStatus {
   service: string;
   timestamp: string;
   environment: string;
+  database: 'up';
 }
