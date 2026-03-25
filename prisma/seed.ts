@@ -1,4 +1,4 @@
-import { PrismaClient, Genero, Papel, RideStatus, RideRequestStatus, TransactionType, MeioPagamento, TransactionStatus } from '@prisma/client';
+import { PrismaClient, Gender, UserRole, RideStatus, RideRequestStatus, TransactionType, PaymentMethod, TransactionStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -10,13 +10,13 @@ async function main() {
     where: { email: 'motorista@example.com' },
     update: {},
     create: {
-      nome: 'João Motorista',
+      name: 'João Motorista',
       email: 'motorista@example.com',
-      senha_hash: '$2b$10$xyz...', // hash mockup
-      genero: Genero.MASCULINO,
-      papel: [Papel.MOTORISTA, Papel.PASSAGEIRO],
-      chave_pix: 'joao@pix.com',
-      saldo: 50.0,
+      passwordHash: '$2b$10$xyz...', // hash mockup
+      gender: Gender.MALE,
+      roles: [UserRole.DRIVER, UserRole.PASSENGER],
+      pixKey: 'joao@pix.com',
+      balance: 50.0,
     },
   });
 
@@ -24,61 +24,61 @@ async function main() {
     where: { email: 'passageiro@example.com' },
     update: {},
     create: {
-      nome: 'Maria Passageira',
+      name: 'Maria Passageira',
       email: 'passageiro@example.com',
-      senha_hash: '$2b$10$abc...', // hash mockup
-      genero: Genero.FEMININO,
-      papel: [Papel.PASSAGEIRO],
-      saldo: 0.0,
+      passwordHash: '$2b$10$abc...', // hash mockup
+      gender: Gender.FEMALE,
+      roles: [UserRole.PASSENGER],
+      balance: 0.0,
     },
   });
 
   // 2. Create a Ride
   const ride = await prisma.ride.create({
     data: {
-      motorista_id: user1.id,
-      horario_saida: new Date(Date.now() + 3600000), // In 1 hour
-      origem_endereco: 'Rua A, 123',
-      origem_lat: -23.5505,
-      origem_lng: -46.6333,
-      destino_endereco: 'Av B, 456',
-      destino_lat: -23.5500,
-      destino_lng: -46.6300,
-      assentos_totais: 4,
-      assentos_disponiveis: 3,
-      custo_por_km: 2.5,
-      distancia_km: 10.0,
-      custo_total_estimado: 25.0,
-      custo_por_assento: 6.25,
-      status: RideStatus.ATIVA,
+      driverId: user1.id,
+      departureTime: new Date(Date.now() + 3600000), // In 1 hour
+      originAddress: 'Rua A, 123',
+      originLat: -23.5505,
+      originLng: -46.6333,
+      destinationAddress: 'Av B, 456',
+      destinationLat: -23.5500,
+      destinationLng: -46.6300,
+      totalSeats: 4,
+      availableSeats: 3,
+      costPerKm: 2.5,
+      distanceKm: 10.0,
+      estimatedTotalCost: 25.0,
+      costPerSeat: 6.25,
+      status: RideStatus.ACTIVE,
     },
   });
 
   // 3. Create a Ride Request
   const request = await prisma.rideRequest.create({
     data: {
-      carona_id: ride.id,
-      passageiro_id: user2.id,
-      origem_embarque: 'Rua A, 123',
-      destino_desembarque: 'Av B, 456',
-      assentos_solicitados: 1,
-      custo_estimado: 6.25,
-      taxa_app: 1.0,
-      total_cobrado: 7.25,
-      status: RideRequestStatus.PAGA,
+      rideId: ride.id,
+      passengerId: user2.id,
+      pickupLocation: 'Rua A, 123',
+      dropoffLocation: 'Av B, 456',
+      requestedSeats: 1,
+      estimatedCost: 6.25,
+      appFee: 1.0,
+      totalCharged: 7.25,
+      status: RideRequestStatus.PAID,
     },
   });
 
   // 4. Create a Transaction
   await prisma.transaction.create({
     data: {
-      solicitacao_id: request.id,
-      usuario_id: user2.id,
-      tipo: TransactionType.PAGAMENTO,
-      valor: 7.25,
-      meio_pagamento: MeioPagamento.CARTAO,
-      pagarme_id: 'tr_123456789',
-      status: TransactionStatus.CONFIRMADA,
+      requestId: request.id,
+      userId: user2.id,
+      type: TransactionType.PAYMENT,
+      amount: 7.25,
+      paymentMethod: PaymentMethod.CARD,
+      pagarMeId: 'tr_123456789',
+      status: TransactionStatus.CONFIRMED,
     },
   });
 
@@ -93,3 +93,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

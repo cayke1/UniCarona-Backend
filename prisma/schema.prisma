@@ -7,129 +7,130 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Genero {
-  MASCULINO
-  FEMININO
-  NAO_BINARIO
-  PREFIRO_NAO_DIZER
+enum Gender {
+  MALE
+  FEMALE
+  NON_BINARY
+  PREFER_NOT_TO_SAY
 }
 
-enum Papel {
-  MOTORISTA
-  PASSAGEIRO
+enum UserRole {
+  DRIVER
+  PASSENGER
 }
 
 enum RideStatus {
-  ATIVA
-  CANCELADA
-  CONCLUIDA
+  ACTIVE
+  CANCELLED
+  COMPLETED
 }
 
 enum RideRequestStatus {
-  PENDENTE
-  ACEITA
-  AGUARDANDO_PAGAMENTO
-  PAGA
-  RECUSADA
-  CANCELADA
+  PENDING
+  ACCEPTED
+  AWAITING_PAYMENT
+  PAID
+  REJECTED
+  CANCELLED
 }
 
 enum TransactionType {
-  PAGAMENTO
-  ESTORNO
-  SAQUE
-  CREDITO
+  PAYMENT
+  REFUND
+  WITHDRAWAL
+  CREDIT
 }
 
-enum MeioPagamento {
-  CARTAO
+enum PaymentMethod {
+  CARD
   PIX
 }
 
 enum TransactionStatus {
-  PENDENTE
-  CONFIRMADA
-  FALHOU
-  ESTORNADA
+  PENDING
+  CONFIRMED
+  FAILED
+  REFUNDED
 }
 
 model User {
-  id         String   @id @default(uuid()) @db.Uuid
-  nome       String
-  email      String   @unique
-  senha_hash String
-  foto_url   String?
-  genero     Genero
-  papel      Papel[]
-  chave_pix  String?
-  saldo      Decimal  @default(0) @db.Decimal(10, 2)
-  criado_em  DateTime @default(now())
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  email        String   @unique
+  passwordHash String
+  photoUrl     String?
+  gender       Gender
+  roles        UserRole[]
+  pixKey       String?
+  balance      Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
 
-  rides_as_driver Ride[]         @relation("DriverRides")
-  ride_requests   RideRequest[]
-  transactions    Transaction[]
+  ridesAsDriver Ride[]         @relation("DriverRides")
+  rideRequests  RideRequest[]
+  transactions  Transaction[]
 
   @@map("users")
 }
 
 model Ride {
   id                   String     @id @default(uuid()) @db.Uuid
-  motorista_id         String     @db.Uuid
-  horario_saida        DateTime
-  origem_endereco      String
-  origem_lat           Float
-  origem_lng           Float
-  destino_endereco     String
-  destino_lat          Float
-  destino_lng          Float
-  assentos_totais      Int
-  assentos_disponiveis Int
-  custo_por_km         Decimal    @db.Decimal(10, 2)
-  distancia_km         Decimal    @db.Decimal(10, 2)
-  custo_total_estimado Decimal    @db.Decimal(10, 2)
-  custo_por_assento    Decimal    @db.Decimal(10, 2)
-  status               RideStatus @default(ATIVA)
-  criado_em            DateTime   @default(now())
+  driverId             String     @db.Uuid
+  departureTime        DateTime
+  originAddress        String
+  originLat            Float
+  originLng            Float
+  destinationAddress   String
+  destinationLat       Float
+  destinationLng       Float
+  totalSeats           Int
+  availableSeats       Int
+  costPerKm           Decimal    @db.Decimal(10, 2)
+  distanceKm           Decimal    @db.Decimal(10, 2)
+  estimatedTotalCost   Decimal    @db.Decimal(10, 2)
+  costPerSeat         Decimal    @db.Decimal(10, 2)
+  status               RideStatus @default(ACTIVE)
+  createdAt            DateTime   @default(now())
 
-  motorista User          @relation("DriverRides", fields: [motorista_id], references: [id])
-  requests  RideRequest[]
+  driver   User          @relation("DriverRides", fields: [driverId], references: [id])
+  requests RideRequest[]
 
   @@map("rides")
 }
 
 model RideRequest {
   id                  String            @id @default(uuid()) @db.Uuid
-  carona_id           String            @db.Uuid
-  passageiro_id       String            @db.Uuid
-  origem_embarque     String
-  destino_desembarque String
-  assentos_solicitados Int
-  custo_estimado      Decimal           @db.Decimal(10, 2)
-  taxa_app            Decimal           @db.Decimal(10, 2)
-  total_cobrado       Decimal           @db.Decimal(10, 2)
-  status              RideRequestStatus @default(PENDENTE)
-  criado_em           DateTime          @default(now())
+  rideId              String            @db.Uuid
+  passengerId         String            @db.Uuid
+  pickupLocation      String
+  dropoffLocation     String
+  requestedSeats      Int
+  estimatedCost       Decimal           @db.Decimal(10, 2)
+  appFee              Decimal           @db.Decimal(10, 2)
+  totalCharged        Decimal           @db.Decimal(10, 2)
+  status              RideRequestStatus @default(PENDING)
+  createdAt           DateTime          @default(now())
 
-  carona      Ride          @relation(fields: [carona_id], references: [id])
-  passageiro  User          @relation(fields: [passageiro_id], references: [id])
+  ride        Ride          @relation(fields: [rideId], references: [id])
+  passenger   User          @relation(fields: [passengerId], references: [id])
   transactions Transaction[]
 
   @@map("ride_requests")
 }
 
 model Transaction {
-  id             String            @id @default(uuid()) @db.Uuid
-  solicitacao_id String            @db.Uuid
-  usuario_id     String            @db.Uuid
-  tipo           TransactionType
-  valor          Decimal           @db.Decimal(10, 2)
-  meio_pagamento MeioPagamento
-  pagarme_id     String?
-  status         TransactionStatus @default(PENDENTE)
-  criado_em      DateTime          @default(now())
+  id            String            @id @default(uuid()) @db.Uuid
+  requestId     String            @db.Uuid
+  userId        String            @db.Uuid
+  type          TransactionType
+  amount        Decimal           @db.Decimal(10, 2)
+  paymentMethod PaymentMethod
+  pagarMeId     String?
+  status        TransactionStatus @default(PENDING)
+  createdAt     DateTime          @default(now())
 
-  solicitacao RideRequest @relation(fields: [solicitacao_id], references: [id])
-  usuario     User        @relation(fields: [usuario_id], references: [id])
+  request RideRequest @relation(fields: [requestId], references: [id])
+  user    User        @relation(fields: [userId], references: [id])
 
   @@map("transactions")
 }
+
