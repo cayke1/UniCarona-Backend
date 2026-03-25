@@ -10,6 +10,7 @@ const healthController = new HealthController(
   new HealthService(databaseService)
 );
 
-healthRoutes.get('/health', healthController.getStatus);
+healthRoutes.get('/', healthController.getStatus);
+
 
 export { healthRoutes };
