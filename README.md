@@ -89,7 +89,25 @@ npm run dev
 - `npm run lint`: analisa o codigo com ESLint.
 - `npm run format`: formata os arquivos com Prettier.
 
-## Variaveis de ambiente
+## Banco de Dados (Prisma)
+
+O projeto utiliza **Prisma ORM** com **PostgreSQL**.
+
+### Entidades Principais
+
+- **User**: Gerenciamento de motoristas e passageiros, saldos e chaves PIX.
+- **Ride**: Cadastro de caronas, trajetos, assentos e custos.
+- **RideRequest**: Solicitações de passageiros para caronas específicas.
+- **Transaction**: Registro de transações financeiras (pagamentos, estornos, saques).
+
+### Comandos Úteis
+
+- `npx prisma migrate dev`: gera e aplica migrações ao banco de dados.
+- `npx prisma generate`: gera o Prisma Client para uso no código.
+- `npx prisma db seed`: popula o banco com dados iniciais para desenvolvimento.
+- `npx prisma studio`: abre uma interface visual para explorar os dados.
+
+## Escalabilidade e manutencao
 
 O projeto utiliza `dotenv` para carregar configuracoes locais a partir do arquivo `.env`.
 
