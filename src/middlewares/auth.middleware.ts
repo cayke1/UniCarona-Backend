@@ -28,7 +28,7 @@ export const authMiddleware = (
 
     request.user = decoded;
     next();
-  } catch (error) {
+  } catch {
     throw new AppError('Invalid or expired token', 401);
   }
 };

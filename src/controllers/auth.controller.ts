@@ -1,12 +1,16 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { AuthService } from '../services/auth.service';
-import type { RegisterBody, LoginBody, RefreshBody } from '../models/auth.model';
+import type {
+  RegisterBody,
+  LoginBody,
+  RefreshBody
+} from '../models/auth.model';
 
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   public register = async (
-    request: Request<{}, {}, RegisterBody>,
+    request: Request<object, object, RegisterBody>,
     response: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -19,7 +23,7 @@ export class AuthController {
   };
 
   public login = async (
-    request: Request<{}, {}, LoginBody>,
+    request: Request<object, object, LoginBody>,
     response: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -32,7 +36,7 @@ export class AuthController {
   };
 
   public refresh = async (
-    request: Request<{}, {}, RefreshBody>,
+    request: Request<object, object, RefreshBody>,
     response: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -46,7 +50,7 @@ export class AuthController {
   };
 
   public logout = async (
-    request: Request<{}, {}, RefreshBody>,
+    request: Request<object, object, RefreshBody>,
     response: Response,
     next: NextFunction
   ): Promise<void> => {

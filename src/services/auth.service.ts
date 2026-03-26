@@ -2,11 +2,11 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/app-error';
-import type { 
-  RegisterBody, 
-  LoginBody, 
-  TokenPayload, 
-  AuthResponse 
+import type {
+  RegisterBody,
+  LoginBody,
+  TokenPayload,
+  AuthResponse
 } from '../models/auth.model';
 import type { User } from '@prisma/client';
 
@@ -14,7 +14,8 @@ export class AuthService {
   private readonly jwtAccessSecret = process.env.JWT_ACCESS_SECRET!;
   private readonly jwtRefreshSecret = process.env.JWT_REFRESH_SECRET!;
   private readonly accessExpiresIn = process.env.JWT_ACCESS_EXPIRES_IN || '15m';
-  private readonly refreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+  private readonly refreshExpiresIn =
+    process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
   public async register(data: RegisterBody): Promise<AuthResponse> {
     const userExists = await prisma.user.findUnique({
@@ -32,7 +33,7 @@ export class AuthService {
         name: data.name,
         email: data.email,
         passwordHash,
-        gender: data.gender,
+        gender: data.gender
       }
     });
 
@@ -48,7 +49,10 @@ export class AuthService {
       throw new AppError('Invalid email or password', 401);
     }
 
-    const isPasswordValid = await bcrypt.compare(data.password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(
+      data.password,
+      user.passwordHash
+    );
 
     if (!isPasswordValid) {
       throw new AppError('Invalid email or password', 401);
@@ -65,8 +69,6 @@ export class AuthService {
 
       const payload = jwt.verify(token, this.jwtRefreshSecret) as TokenPayload;
 
-
-
       const storedToken = await prisma.refreshToken.findUnique({
         where: { token },
         include: { user: true }
@@ -75,7 +77,6 @@ export class AuthService {
       if (!storedToken || storedToken.userId !== payload.sub) {
         throw new AppError('Invalid refresh token', 401);
       }
-
 
       if (storedToken.expiresAt < new Date()) {
         await prisma.refreshToken.delete({ where: { id: storedToken.id } });
@@ -88,7 +89,7 @@ export class AuthService {
 
       return this.generateTokens(storedToken.user);
     } catch (error) {
-      console.log(error)
+      console.log(error);
       if (error instanceof AppError) throw error;
       if (error instanceof jwt.TokenExpiredError) {
         await prisma.refreshToken.deleteMany({ where: { token } });
@@ -97,7 +98,6 @@ export class AuthService {
       throw new AppError('Invalid refresh token', 401);
     }
   }
-
 
   public async logout(token: string): Promise<void> {
     await prisma.refreshToken.deleteMany({
@@ -111,17 +111,18 @@ export class AuthService {
       email: user.email
     };
 
-    const accessToken = jwt.sign(payload as any, this.jwtAccessSecret, {
-      expiresIn: this.accessExpiresIn as any
+    const accessToken = jwt.sign(payload, this.jwtAccessSecret, {
+      expiresIn: this.accessExpiresIn as jwt.SignOptions['expiresIn']
     });
 
-    const refreshToken = jwt.sign(payload as any, this.jwtRefreshSecret, {
-      expiresIn: this.refreshExpiresIn as any
+    const refreshToken = jwt.sign(payload, this.jwtRefreshSecret, {
+      expiresIn: this.refreshExpiresIn as jwt.SignOptions['expiresIn']
     });
 
-
-    // Store refresh token in DB
-    const decoded = jwt.decode(refreshToken) as any;
+    const decoded = jwt.decode(refreshToken) as { exp: number } | null;
+    if (!decoded) {
+      throw new AppError('Failed to decode refresh token', 500);
+    }
     const expiresAt = new Date(decoded.exp * 1000);
 
     await prisma.refreshToken.create({
@@ -132,7 +133,12 @@ export class AuthService {
       }
     });
 
-    const { passwordHash, balance, pixKey, ...publicUser } = user;
+    const {
+      passwordHash: _passwordHash,
+      balance: _balance,
+      pixKey: _pixKey,
+      ...publicUser
+    } = user;
 
     return {
       accessToken,
