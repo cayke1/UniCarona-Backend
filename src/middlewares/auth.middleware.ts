@@ -11,24 +11,41 @@ export const authMiddleware = (
   const authHeader = request.headers.authorization;
 
   if (!authHeader) {
-    throw new AppError('No token provided', 401);
+    throw new AppError('Unauthorized: No token provided', 401);
   }
 
-  const [scheme, token] = authHeader.split(' ');
+  const parts = authHeader.split(' ');
 
-  if (!scheme || scheme !== 'Bearer' || !token) {
-    throw new AppError('Token malformatted', 401);
+  if (parts.length !== 2) {
+    throw new AppError('Unauthorized: Token error', 401);
+  }
+
+  const [scheme, token] = parts;
+
+  if (!/^Bearer$/i.test(scheme)) {
+    throw new AppError('Unauthorized: Token malformatted', 401);
   }
 
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_ACCESS_SECRET!
-    ) as TokenPayload;
+    const secret = process.env.JWT_ACCESS_SECRET;
+
+    if (!secret) {
+      throw new Error('JWT_ACCESS_SECRET is not defined');
+    }
+
+    const decoded = jwt.verify(token, secret) as TokenPayload;
 
     request.user = decoded;
     next();
-  } catch {
-    throw new AppError('Invalid or expired token', 401);
+  } catch (err) {
+    if (err instanceof jwt.TokenExpiredError) {
+      throw new AppError('Unauthorized: Token expired', 401);
+    }
+    
+    if (err instanceof jwt.JsonWebTokenError) {
+      throw new AppError('Unauthorized: Invalid token signature', 401);
+    }
+
+    throw new AppError('Unauthorized: Access denied', 401);
   }
 };
