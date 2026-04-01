@@ -1,0 +1,27 @@
+import { z } from 'zod';
+
+export const registerSchema = z.object({
+  name: z.string({ message: "O nome é obrigatório" })
+    .min(3, "O nome deve ter pelo menos 3 caracteres"),
+    
+  email: z.email({ message: "Formato de e-mail inválido ou não fornecido" }),
+    
+  password: z.string({ message: "A senha é obrigatória" })
+    .min(6, "A senha deve ter pelo menos 6 caracteres"),
+  
+  gender: z.enum(['MALE', 'FEMALE', 'NON_BINARY', 'PREFER_NOT_TO_SAY'], {
+    message: "Gênero inválido ou não fornecido."
+  })
+});
+
+export const loginSchema = z.object({
+  email: z.email({ message: "Formato de e-mail inválido ou não fornecido" }),
+    
+  password: z.string({ message: "A senha é obrigatória" })
+    .min(1, "A senha não pode estar vazia")
+});
+
+export const refreshSchema = z.object({
+  refreshToken: z.string({ message: "O refresh token é obrigatório" })
+    .min(1, "O refresh token não pode estar vazio")
+});
