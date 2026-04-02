@@ -5,7 +5,9 @@ import { validateData } from '../middlewares/validate.middleware';
 import {
   registerSchema,
   loginSchema,
-  refreshSchema
+  refreshSchema,
+  resetPasswordSchema,
+  forgotPasswordSchema
 } from '../schemas/auth.schema';
 
 const authRoutes = Router();
@@ -16,5 +18,7 @@ authRoutes.post('/register', validateData(registerSchema), authController.regist
 authRoutes.post('/login', validateData(loginSchema), authController.login);
 authRoutes.post('/refresh', validateData(refreshSchema), authController.refresh);
 authRoutes.post('/logout', validateData(refreshSchema), authController.logout);
+authRoutes.post('/forgot-password', validateData(forgotPasswordSchema), authController.forgotPassword);
+authRoutes.post('/reset-password', validateData(resetPasswordSchema), authController.resetPassword);
 
 export { authRoutes };
