@@ -11,12 +11,6 @@ import type {
 import type { User } from '@prisma/client';
 
 export class AuthService {
-  private readonly jwtAccessSecret = process.env.JWT_ACCESS_SECRET!;
-  private readonly jwtRefreshSecret = process.env.JWT_REFRESH_SECRET!;
-  private readonly accessExpiresIn = process.env.JWT_ACCESS_EXPIRES_IN || '15m';
-  private readonly refreshExpiresIn =
-    process.env.JWT_REFRESH_EXPIRES_IN || '7d';
-
   public async register(data: RegisterBody): Promise<AuthResponse> {
     const userExists = await prisma.user.findUnique({
       where: { email: data.email }
@@ -67,7 +61,10 @@ export class AuthService {
         throw new AppError('Refresh token is required', 400);
       }
 
-      const payload = jwt.verify(token, this.jwtRefreshSecret) as TokenPayload;
+      const secret = process.env.JWT_REFRESH_SECRET;
+      if (!secret) throw new AppError('JWT_REFRESH_SECRET not configured', 500);
+
+      const payload = jwt.verify(token, secret) as TokenPayload;
 
       const storedToken = await prisma.refreshToken.findUnique({
         where: { token },
@@ -106,18 +103,28 @@ export class AuthService {
   }
 
   private async generateTokens(user: User): Promise<AuthResponse> {
+    const accessSecret = process.env.JWT_ACCESS_SECRET;
+    const refreshSecret = process.env.JWT_REFRESH_SECRET;
+
+    if (!accessSecret || !refreshSecret) {
+      throw new AppError('JWT secrets are not configured in .env', 500);
+    }
+
+    const accessExpiresIn = process.env.JWT_ACCESS_EXPIRES_IN || '15m';
+    const refreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+
     const payload: TokenPayload = {
       sub: user.id,
       email: user.email,
       roles: user.roles
     };
 
-    const accessToken = jwt.sign(payload, this.jwtAccessSecret, {
-      expiresIn: this.accessExpiresIn as jwt.SignOptions['expiresIn']
+    const accessToken = jwt.sign(payload, accessSecret, {
+      expiresIn: accessExpiresIn as jwt.SignOptions['expiresIn']
     });
 
-    const refreshToken = jwt.sign(payload, this.jwtRefreshSecret, {
-      expiresIn: this.refreshExpiresIn as jwt.SignOptions['expiresIn']
+    const refreshToken = jwt.sign(payload, refreshSecret, {
+      expiresIn: refreshExpiresIn as jwt.SignOptions['expiresIn']
     });
 
     const decoded = jwt.decode(refreshToken) as { exp: number } | null;
