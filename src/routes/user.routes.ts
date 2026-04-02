@@ -1,16 +1,13 @@
-import { Router, type Request, type Response } from 'express';
+import { Router } from 'express';
 import { authMiddleware } from '../middlewares/auth.middleware';
+import { userController } from '../controllers/user.controller';
 
 const userRoutes = Router();
 
 /**
  * @example Rota protegida que retorna o perfil do usuário logado
- * GET /api/users/profile
+ * GET /api/users/me
  */
-userRoutes.get('/profile', authMiddleware, (req: Request, res: Response) => {
-  return res.json({
-    user: req.user,
-  });
-});
+userRoutes.get('/me', authMiddleware, userController.getMe);
 
 export { userRoutes };
