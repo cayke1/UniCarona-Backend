@@ -4,7 +4,8 @@ import type {
   RegisterBody,
   LoginBody,
   RefreshBody,
-  ResetPasswordBody
+  ResetPasswordBody,
+  ForgotPasswordBody
 } from '../models/auth.model';
 
 export class AuthController {
@@ -72,6 +73,23 @@ export class AuthController {
     try {
       await this.authService.resetPassword(request.body);
       response.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public forgotPassword = async (
+    request: Request<object, object, ForgotPasswordBody>,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const { email } = request.body;
+      await this.authService.executeForgotPassword(email);
+
+      response.status(200).json({
+        message: 'Se este e-mail estiver cadastrado, as instruções de recuperação foram enviadas.'
+      });
     } catch (error) {
       next(error);
     }

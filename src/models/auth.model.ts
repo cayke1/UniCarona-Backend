@@ -32,3 +32,7 @@ export interface ResetPasswordBody {
   token: string;
   newPassword: string;
 }
+
+export interface ForgotPasswordBody {
+  email: string;
+}

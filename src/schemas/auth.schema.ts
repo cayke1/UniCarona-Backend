@@ -33,3 +33,7 @@ export const resetPasswordSchema = z.object({
   newPassword: z.string({ message: "A nova senha é obrigatória" })
     .min(8, "A senha deve ter pelo menos 8 caracteres")
 });
+
+export const forgotPasswordSchema = z.object({
+  email: z.email({ message: "Formato de e-mail inválido ou não fornecido" })
+});
