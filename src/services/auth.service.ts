@@ -6,7 +6,8 @@ import type {
   RegisterBody,
   LoginBody,
   TokenPayload,
-  AuthResponse
+  AuthResponse,
+  ResetPasswordBody
 } from '../models/auth.model';
 import type { User } from '@prisma/client';
 
@@ -100,6 +101,30 @@ export class AuthService {
     await prisma.refreshToken.deleteMany({
       where: { token }
     });
+  }
+
+  public async resetPassword({ token, newPassword }: ResetPasswordBody): Promise<void> {
+    const resetToken = await prisma.passwordResetToken.findUnique({
+      where: { token },
+      include: { user: true }
+    });
+
+    if (!resetToken || resetToken.expiresAt < new Date()) {
+      // Return generic error for security reasons (prevent enumeration)
+      throw new AppError('Token de recuperação inválido ou expirado', 400);
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: resetToken.userId },
+        data: { passwordHash }
+      }),
+      prisma.passwordResetToken.delete({
+        where: { id: resetToken.id }
+      })
+    ]);
   }
 
   private async generateTokens(user: User): Promise<AuthResponse> {

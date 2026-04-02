@@ -27,3 +27,8 @@ export interface AuthResponse {
 export interface RefreshBody {
   refreshToken: string;
 }
+
+export interface ResetPasswordBody {
+  token: string;
+  newPassword: string;
+}

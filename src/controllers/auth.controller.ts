@@ -3,7 +3,8 @@ import type { AuthService } from '../services/auth.service';
 import type {
   RegisterBody,
   LoginBody,
-  RefreshBody
+  RefreshBody,
+  ResetPasswordBody
 } from '../models/auth.model';
 
 export class AuthController {
@@ -57,6 +58,19 @@ export class AuthController {
     try {
       const { refreshToken } = request.body;
       await this.authService.logout(refreshToken);
+      response.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public resetPassword = async (
+    request: Request<object, object, ResetPasswordBody>,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      await this.authService.resetPassword(request.body);
       response.status(204).send();
     } catch (error) {
       next(error);
