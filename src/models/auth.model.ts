@@ -15,6 +15,7 @@ export interface LoginBody {
 export interface TokenPayload {
   sub: string;
   email: string;
+  roles: string[];
 }
 
 export interface AuthResponse {
