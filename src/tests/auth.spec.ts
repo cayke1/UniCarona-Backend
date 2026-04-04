@@ -39,6 +39,10 @@ describe('Testes de Autenticação (T-16)', () => {
         gender: "MALE"
       });
 
+      if (response.status !== 201) {
+      console.log("🚨 ERRO INTERNO DO BACKEND:", response.body);
+    }
+
     expect(response.status).toBe(201);
     expect(response.body).toHaveProperty('user'); 
     expect(response.body.user).toHaveProperty('id'); 
@@ -67,6 +71,10 @@ describe('Testes de Autenticação (T-16)', () => {
         email: testEmail,
         password: testPassword
       });
+
+      if (response.status !== 200) {
+      console.log("🚨 ERRO INTERNO DO BACKEND NO LOGIN:", response.body);
+    }
 
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('accessToken'); 
