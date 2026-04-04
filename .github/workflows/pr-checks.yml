@@ -34,6 +34,8 @@ jobs:
       DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/testdb?schema=public
       RESEND_API_KEY: "re_12345678901234567890"
       JWT_SECRET: "chave_secreta_para_testes"
+      JWT_ACCESS_EXPIRES_IN="15m"
+      JWT_REFRESH_EXPIRES_IN="7d"
 
     steps:
       - name: Checkout repository
