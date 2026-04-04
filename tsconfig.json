@@ -14,7 +14,7 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "sourceMap": true,
-    "types": ["node"]
+    "types": ["jest", "node"]
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

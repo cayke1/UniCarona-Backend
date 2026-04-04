@@ -15,6 +15,30 @@ jobs:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/testdb?schema=public
+      RESEND_API_KEY: "re_12345678901234567890"
+      JWT_SECRET: "chave_secreta_para_testes"
+      JWT_ACCESS_SECRET: "chave_falsa_access_12345"
+      JWT_REFRESH_SECRET: "chave_falsa_refresh_12345"
+      JWT_ACCESS_EXPIRES_IN: "15m"
+      JWT_REFRESH_EXPIRES_IN: "7d"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -30,6 +54,9 @@ jobs:
 
       - name: Generate Prisma Client
         run: npm run prisma:generate
+
+      - name: Push DB Schema
+        run: npx prisma db push
 
       - name: Run lint
         run: npm run lint
