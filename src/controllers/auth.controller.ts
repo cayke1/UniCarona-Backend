@@ -1,0 +1,97 @@
+import type { NextFunction, Request, Response } from 'express';
+import type { AuthService } from '../services/auth.service';
+import type {
+  RegisterBody,
+  LoginBody,
+  RefreshBody,
+  ResetPasswordBody,
+  ForgotPasswordBody
+} from '../models/auth.model';
+
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
+  public register = async (
+    request: Request<object, object, RegisterBody>,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const result = await this.authService.register(request.body);
+      response.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public login = async (
+    request: Request<object, object, LoginBody>,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const result = await this.authService.login(request.body);
+      response.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public refresh = async (
+    request: Request<object, object, RefreshBody>,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const { refreshToken } = request.body;
+      const result = await this.authService.refresh(refreshToken);
+      response.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public logout = async (
+    request: Request<object, object, RefreshBody>,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const { refreshToken } = request.body;
+      await this.authService.logout(refreshToken);
+      response.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public resetPassword = async (
+    request: Request<object, object, ResetPasswordBody>,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      await this.authService.resetPassword(request.body);
+      response.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public forgotPassword = async (
+    request: Request<object, object, ForgotPasswordBody>,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const { email } = request.body;
+      await this.authService.executeForgotPassword(email);
+
+      response.status(200).json({
+        message: 'Se este e-mail estiver cadastrado, as instruções de recuperação foram enviadas.'
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+}
