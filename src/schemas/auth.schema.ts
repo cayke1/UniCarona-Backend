@@ -8,10 +8,6 @@ export const registerSchema = z.object({
     
   password: z.string({ message: "A senha é obrigatória" })
     .min(6, "A senha deve ter pelo menos 6 caracteres"),
-  
-  gender: z.enum(['MALE', 'FEMALE', 'NON_BINARY', 'PREFER_NOT_TO_SAY'], {
-    message: "Gênero inválido ou não fornecido."
-  })
 });
 
 export const loginSchema = z.object({
