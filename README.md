@@ -115,6 +115,46 @@ O projeto utiliza `dotenv` para carregar configuracoes locais a partir do arquiv
 - `.env` esta ignorado no versionamento por seguranca.
 - `DATABASE_URL` define a conexao do Prisma com o PostgreSQL.
 
+## Google Maps API (T12)
+
+O servico de distancia utiliza a Google Maps Distance Matrix API para calculos precisos.
+
+### Configuracao
+
+1. Obtenha uma chave de API no [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Habilite a API "Distance Matrix API" para sua chave
+3. Adicione a chave ao arquivo `.env`:
+
+```env
+GOOGLE_MAPS_API_KEY=sua_chave_aqui
+```
+
+### Cache
+
+Os resultados sao cacheados por 1 hora (3600s) usando `node-cache` para reduzir chamadas e custos.
+
+### Fallback
+
+Se a chave nao estiver configurada ou a API falhar, o sistema utiliza a formula Haversine para calculo de distancia.
+
+## Servico de Precificacao (T13)
+
+O pricing service calcula custos de viagem com base em distancia e configuracoes ambientais.
+
+### Variaveis de Configuracao
+
+```env
+PRICING_BASE_RATE=3.00       # Taxa fixa por viagem (R$)
+PRICING_PER_KM=0.50          # Custo por quilometro (R$)
+PRICING_APP_FEE_PERCENT=10   # Taxa da aplicacao (%)
+```
+
+### Calculos
+
+- **Custo Total**: `BASE_RATE + (DISTANCE_KM * PER_KM)`
+- **Taxa App**: `TOTAL_COST * APP_FEE_PERCENT / 100`
+- **Custo por Assento**: `TOTAL_COST / AVAILABLE_SEATS`
+
 ## Health check
 
 A rota `GET /api/health` agora valida tambem a conectividade com o banco e retorna o status da API com o campo `database`.
