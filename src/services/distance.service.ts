@@ -56,7 +56,7 @@ export class DistanceService {
       });
 
       const response = await fetch(`${this.GOOGLE_MAPS_API_URL}?${params}`);
-      const data: DistanceMatrixResponse = await response.json();
+      const data = (await response.json()) as DistanceMatrixResponse;
 
       if (data.status !== 'OK' || !data.rows[0]?.elements[0]) {
         return this.calculateHaversineDistance(originLat, originLng, destLat, destLng);
