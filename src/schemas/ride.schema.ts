@@ -45,6 +45,11 @@ export const createRideSchema = z.object({
     .int('Número de assentos deve ser um inteiro')
     .min(1, 'Deve ter pelo menos 1 assento')
     .max(8, 'Máximo de 8 assentos'),
+
+  costPerKm: z.number().optional(),
+  distanceKm: z.number().optional(),
+  estimatedTotalCost: z.number().optional(),
+  costPerSeat: z.number().optional(),
 }).refine(
   (data) => {
     return (

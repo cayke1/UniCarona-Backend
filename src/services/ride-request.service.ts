@@ -6,6 +6,12 @@ import type { RideRequest } from '@prisma/client';
 
 export class RideRequestService {
   async createRequest(passengerId: string, rideId: string, data: CreateRideRequestInput): Promise<RideRequest> {
+    // Validação básica de UUID para evitar erro interno do Prisma
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(rideId)) {
+      throw new AppError('ID de carona inválido (deve ser um UUID)', 400);
+    }
+
     const ride = await prisma.ride.findUnique({
       where: { id: rideId },
     });

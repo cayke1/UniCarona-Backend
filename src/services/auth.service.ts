@@ -30,6 +30,7 @@ export class AuthService {
         name: data.name,
         email: data.email,
         passwordHash,
+        gender: 'PREFER_NOT_TO_SAY',
       }
     });
 
