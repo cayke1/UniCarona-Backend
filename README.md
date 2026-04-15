@@ -154,6 +154,95 @@ PRICING_APP_FEE_PERCENT=10   # Taxa da aplicacao (%)
 - **Custo Total**: `BASE_RATE + (DISTANCE_KM * PER_KM)`
 - **Taxa App**: `TOTAL_COST * APP_FEE_PERCENT / 100`
 - **Custo por Assento**: `TOTAL_COST / AVAILABLE_SEATS`
+- **Ganho Motorista**: `TOTAL_COST - TAXA_APP`
+
+### API de Precificacao
+
+#### Calcular Preco
+
+**POST** `/api/pricing/calculate`
+
+Calcula o preco de uma viagem com base na distancia e assentos disponiveis.
+
+**Corpo da requisicao:**
+
+```json
+{
+  "distanceKm": 10,
+  "availableSeats": 4
+}
+```
+
+| Campo          | Tipo   | Descricao                      | Restricao |
+| -------------- | ------ | ------------------------------ | --------- |
+| distanceKm     | number | Distancia em quilometros       | >= 0      |
+| availableSeats | number | Numero de assentos disponiveis | >= 1      |
+
+**Resposta (200 OK):**
+
+```json
+{
+  "baseRate": 3.0,
+  "distanceCost": 5.0,
+  "totalCost": 8.0,
+  "appFee": 0.8,
+  "appFeePercent": 10,
+  "driverEarnings": 7.2,
+  "costPerSeat": 2.0,
+  "availableSeats": 4
+}
+```
+
+| Campo          | Tipo   | Descricao                                |
+| -------------- | ------ | ---------------------------------------- |
+| baseRate       | number | Taxa fixa (R$)                           |
+| distanceCost   | number | Custo pela distancia (R$)                |
+| totalCost      | number | Custo total da viagem (R$)               |
+| appFee         | number | Taxa da aplicacao (R$)                   |
+| appFeePercent  | number | Percentual da taxa da aplicacao (%)      |
+| driverEarnings | number | Ganho liquido do motorista (R$)          |
+| costPerSeat    | number | Custo por assento (R$)                   |
+| availableSeats | number | Numero de assentos utilizados no calculo |
+
+**Exemplo com curl:**
+
+```bash
+curl -X POST http://localhost:3000/api/pricing/calculate \
+  -H "Content-Type: application/json" \
+  -d '{"distanceKm": 15, "availableSeats": 3}'
+```
+
+#### Obter Configuracao
+
+**GET** `/api/pricing/config`
+
+Retorna a configuracao atual de precificacao (valores das variaveis de ambiente).
+
+**Resposta (200 OK):**
+
+```json
+{
+  "baseRate": 3.0,
+  "perKm": 0.5,
+  "appFeePercent": 10
+}
+```
+
+**Exemplo com curl:**
+
+```bash
+curl http://localhost:3000/api/pricing/config
+```
+
+### Testes
+
+Os testes unitarios do servico de precificacao estao em `src/tests/pricing.spec.ts`.
+
+Para executar apenas os testes de precificacao:
+
+```bash
+npm test -- pricing.spec.ts
+```
 
 ## Health check
 
