@@ -3,9 +3,13 @@ import { AppError } from './app-error';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_EMAIL = process.env.MAIL_FROM || 'UniCarona <onboarding@dellanne-dev.online>'; // Default Resend test address or from env
+const FROM_EMAIL =
+  process.env.MAIL_FROM || 'UniCarona <onboarding@dellanne-dev.online>';
 
-export async function sendResetPasswordEmail(email: string, token: string): Promise<void> {
+export async function sendResetPasswordEmail(
+  email: string,
+  token: string
+): Promise<void> {
   const resetLink = `https://UniCarona.com/auth/reset-password?token=${token}`;
 
   try {
