@@ -30,7 +30,6 @@ export class AuthService {
         name: data.name,
         email: data.email,
         passwordHash,
-        gender: data.gender
       }
     });
 
