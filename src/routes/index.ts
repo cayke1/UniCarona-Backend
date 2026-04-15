@@ -3,6 +3,7 @@ import { healthRoutes } from './health.routes';
 import { authRoutes } from './auth.routes';
 import { userRoutes } from './user.routes';
 import { rideRoutes } from './ride.routes';
+import { rideRequestRoutes } from './ride-request.routes';
 
 const routes = Router();
 
@@ -10,5 +11,6 @@ routes.use('/health', healthRoutes);
 routes.use('/auth', authRoutes);
 routes.use('/users', userRoutes);
 routes.use('/rides', rideRoutes);
+routes.use('/requests', rideRequestRoutes);
 
 export { routes };
