@@ -1,10 +1,9 @@
-import type { User, Gender } from '@prisma/client';
+import type { User } from '@prisma/client';
 
 export interface RegisterBody {
   name: string;
   email: string;
   password: string;
-  gender: Gender;
 }
 
 export interface LoginBody {
