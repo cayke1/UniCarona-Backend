@@ -8,10 +8,12 @@ jest.mock('resend', () => {
     Resend: jest.fn().mockImplementation(() => {
       return {
         emails: {
-          send: jest.fn().mockResolvedValue({ data: { id: 'mocked_email_id' }, error: null }),
-        },
+          send: jest
+            .fn()
+            .mockResolvedValue({ data: { id: 'mocked_email_id' }, error: null })
+        }
       };
-    }),
+    })
   };
 });
 
@@ -31,9 +33,8 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
         name: 'Driver Test',
         email: testEmailDriver,
         passwordHash,
-        gender: 'MALE',
-        roles: ['DRIVER'],
-      },
+        roles: ['DRIVER']
+      }
     });
     driverId = user.id;
 
@@ -64,7 +65,7 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
           destinationAddress: 'Terminal Santo André',
           destinationLat: -23.6678,
           destinationLng: -46.4611,
-          totalSeats: 3,
+          totalSeats: 3
         });
 
       expect(response.status).toBe(201);
@@ -81,9 +82,8 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
           name: 'Passenger Test',
           email: passengerEmail,
           passwordHash,
-          gender: 'MALE',
-          roles: [UserRole.PASSENGER],
-        },
+          roles: [UserRole.PASSENGER]
+        }
       });
 
       const loginResponse = await request(app)
@@ -101,12 +101,14 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
           destinationAddress: 'Destination',
           destinationLat: -23.6678,
           destinationLng: -46.4611,
-          totalSeats: 3,
+          totalSeats: 3
         });
 
       expect(response.status).toBe(403);
 
-      await prisma.refreshToken.deleteMany({ where: { user: { email: passengerEmail } } });
+      await prisma.refreshToken.deleteMany({
+        where: { user: { email: passengerEmail } }
+      });
       await prisma.user.delete({ where: { email: passengerEmail } });
     });
 
@@ -122,7 +124,7 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
           destinationAddress: 'Destination',
           destinationLat: -23.6678,
           destinationLng: -46.4611,
-          totalSeats: 3,
+          totalSeats: 3
         });
 
       expect(response.status).toBe(400);
@@ -140,7 +142,7 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
           destinationAddress: 'Destination',
           destinationLat: -23.6678,
           destinationLng: -46.4611,
-          totalSeats: 10,
+          totalSeats: 10
         });
 
       expect(response.status).toBe(400);
@@ -158,7 +160,7 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
           destinationAddress: 'Same Place',
           destinationLat: -23.6445,
           destinationLng: -46.5761,
-          totalSeats: 3,
+          totalSeats: 3
         });
 
       expect(response.status).toBe(400);
@@ -195,7 +197,7 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
           destinationAddress: 'Destination Detail',
           destinationLat: -23.6678,
           destinationLng: -46.4611,
-          totalSeats: 2,
+          totalSeats: 2
         });
 
       const rideId = createResponse.body.id;
@@ -231,7 +233,7 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
           destinationAddress: 'Destination Cancel',
           destinationLat: -23.6678,
           destinationLng: -46.4611,
-          totalSeats: 2,
+          totalSeats: 2
         });
 
       const rideId = createResponse.body.id;
@@ -252,9 +254,8 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
           name: 'Other Driver',
           email: otherEmail,
           passwordHash,
-          gender: 'MALE',
-          roles: [UserRole.DRIVER],
-        },
+          roles: [UserRole.DRIVER]
+        }
       });
 
       const otherLogin = await request(app)
@@ -275,7 +276,9 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
         expect(response.status).toBe(403);
       }
 
-      await prisma.refreshToken.deleteMany({ where: { user: { email: otherEmail } } });
+      await prisma.refreshToken.deleteMany({
+        where: { user: { email: otherEmail } }
+      });
       await prisma.user.delete({ where: { email: otherEmail } });
     });
   });
