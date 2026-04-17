@@ -16,7 +16,7 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
 
   beforeAll(async () => {
     const passwordHash = await bcrypt.hash(testPassword, 10);
-    
+
     // Create Driver
     const driverEmail = `driver_req_${Date.now()}@example.com`;
     const driver = await prisma.user.create({
@@ -24,9 +24,8 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
         name: 'Driver Test',
         email: driverEmail,
         passwordHash,
-        gender: 'MALE',
-        roles: [UserRole.DRIVER],
-      },
+        roles: [UserRole.DRIVER]
+      }
     });
     driverId = driver.id;
 
@@ -42,9 +41,8 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
         name: 'Passenger Test',
         email: passengerEmail,
         passwordHash,
-        gender: 'FEMALE',
-        roles: [UserRole.PASSENGER],
-      },
+        roles: [UserRole.PASSENGER]
+      }
     });
     passengerId = passenger.id;
 
@@ -66,17 +64,23 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
         destinationLat: -23.6678,
         destinationLng: -46.4611,
         totalSeats: 2,
-        costPerSeat: 10,
+        costPerSeat: 10
       });
     rideId = rideRes.body.id;
   });
 
   afterAll(async () => {
-    await prisma.transaction.deleteMany({ where: { user: { id: { in: [driverId, passengerId] } } } });
+    await prisma.transaction.deleteMany({
+      where: { user: { id: { in: [driverId, passengerId] } } }
+    });
     await prisma.rideRequest.deleteMany({ where: { rideId } });
     await prisma.ride.deleteMany({ where: { id: rideId } });
-    await prisma.refreshToken.deleteMany({ where: { userId: { in: [driverId, passengerId] } } });
-    await prisma.user.deleteMany({ where: { id: { in: [driverId, passengerId] } } });
+    await prisma.refreshToken.deleteMany({
+      where: { userId: { in: [driverId, passengerId] } }
+    });
+    await prisma.user.deleteMany({
+      where: { id: { in: [driverId, passengerId] } }
+    });
     await prisma.$disconnect();
   });
 
@@ -88,7 +92,7 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
         .send({
           pickupLocation: 'Ponto A',
           dropoffLocation: 'Ponto B',
-          requestedSeats: 1,
+          requestedSeats: 1
         });
 
       expect(response.status).toBe(201);
@@ -104,7 +108,7 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
         .send({
           pickupLocation: 'Ponto A',
           dropoffLocation: 'Ponto B',
-          requestedSeats: 1,
+          requestedSeats: 1
         });
 
       expect(response.status).toBe(400);
@@ -118,11 +122,13 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
         .send({
           pickupLocation: 'Ponto A',
           dropoffLocation: 'Ponto B',
-          requestedSeats: 1,
+          requestedSeats: 1
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.message).toMatch(/cannot request a ride for yourself/i);
+      expect(response.body.message).toMatch(
+        /cannot request a ride for yourself/i
+      );
     });
 
     it('Deve retornar 400 se não houver assentos suficientes', async () => {
@@ -133,9 +139,8 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
           name: 'P2',
           email: p2Email,
           passwordHash: await bcrypt.hash(testPassword, 10),
-          gender: 'MALE',
-          roles: [UserRole.PASSENGER],
-        },
+          roles: [UserRole.PASSENGER]
+        }
       });
       const p2Login = await request(app)
         .post('/api/auth/login')
@@ -147,13 +152,15 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
         .send({
           pickupLocation: 'Ponto A',
           dropoffLocation: 'Ponto B',
-          requestedSeats: 5, // More than available
+          requestedSeats: 5 // More than available
         });
 
       expect(response.status).toBe(400);
       expect(response.body.message).toMatch(/not enough available seats/i);
 
-      await prisma.refreshToken.deleteMany({ where: { user: { email: p2Email } } });
+      await prisma.refreshToken.deleteMany({
+        where: { user: { email: p2Email } }
+      });
       await prisma.user.delete({ where: { email: p2Email } });
     });
   });
@@ -168,14 +175,14 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
         data: { availableSeats: 2 }
       });
       await prisma.rideRequest.deleteMany({ where: { rideId } });
-      
+
       const res = await request(app)
         .post(`/api/rides/${rideId}/requests`)
         .set('Authorization', `Bearer ${passengerToken}`)
         .send({
           pickupLocation: 'Ponto A',
           dropoffLocation: 'Ponto B',
-          requestedSeats: 1,
+          requestedSeats: 1
         });
       requestId = res.body.id;
     });
