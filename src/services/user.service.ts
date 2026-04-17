@@ -10,12 +10,11 @@ export class UserService {
         name: true,
         email: true,
         photoUrl: true,
-        gender: true,
         roles: true,
         pixKey: true,
         balance: true,
-        createdAt: true,
-      },
+        createdAt: true
+      }
     });
 
     if (!user) {

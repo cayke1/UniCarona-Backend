@@ -29,8 +29,7 @@ export class AuthService {
       data: {
         name: data.name,
         email: data.email,
-        passwordHash,
-        gender: 'PREFER_NOT_TO_SAY',
+        passwordHash
       }
     });
 
@@ -105,7 +104,10 @@ export class AuthService {
     });
   }
 
-  public async resetPassword({ token, newPassword }: ResetPasswordBody): Promise<void> {
+  public async resetPassword({
+    token,
+    newPassword
+  }: ResetPasswordBody): Promise<void> {
     const resetToken = await prisma.passwordResetToken.findUnique({
       where: { token },
       include: { user: true }
@@ -145,7 +147,7 @@ export class AuthService {
     });
 
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); 
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
     await prisma.passwordResetToken.create({
       data: {
@@ -156,7 +158,7 @@ export class AuthService {
     });
 
     // We don't want to wait for the email to be sent before returning success,
-    // but the task says to "Call the mail service". 
+    // but the task says to "Call the mail service".
     // To maintain responsiveness, usually this would be backgrounded.
     // However, I'll await it for now to follow the standard layer flow.
     await sendResetPasswordEmail(email, token);
