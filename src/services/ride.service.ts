@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/app-error';
+import { haversine } from '../lib/haversine';
 import type { CreateRideInput } from '../schemas/ride.schema';
 import type { Ride } from '@prisma/client';
 
@@ -36,6 +37,7 @@ interface MapRideResponse {
   departureTime: Date;
   availableSeats: number;
   costPerSeat: number;
+  distanceKm: number;
   driver: {
     name: string;
     photoUrl: string | null;
@@ -43,7 +45,10 @@ interface MapRideResponse {
 }
 
 export class RideService {
-  async createRide(driverId: string, data: CreateRideInput): Promise<RideWithDriver> {
+  async createRide(
+    driverId: string,
+    data: CreateRideInput
+  ): Promise<RideWithDriver> {
     const ride = await prisma.ride.create({
       data: {
         driverId,
@@ -60,17 +65,17 @@ export class RideService {
         distanceKm: 0,
         estimatedTotalCost: 0,
         costPerSeat: 0,
-        status: 'ACTIVE',
+        status: 'ACTIVE'
       },
       include: {
         driver: {
           select: {
             id: true,
             name: true,
-            photoUrl: true,
-          },
-        },
-      },
+            photoUrl: true
+          }
+        }
+      }
     });
 
     return {
@@ -90,50 +95,69 @@ export class RideService {
       costPerSeat: Number(ride.costPerSeat),
       status: ride.status,
       createdAt: ride.createdAt,
-      driver: ride.driver,
+      driver: ride.driver
     };
   }
 
-  async listActiveRides(userId: string): Promise<MapRideResponse[]> {
+  async listActiveRides(
+    userId: string,
+    userLat?: number,
+    userLng?: number
+  ): Promise<MapRideResponse[]> {
     const now = new Date();
 
     const rides = await prisma.ride.findMany({
       where: {
         status: 'ACTIVE',
         departureTime: {
-          gte: now,
+          gte: now
         },
         driverId: {
-          not: userId,
-        },
+          not: userId
+        }
       },
       include: {
         driver: {
           select: {
             name: true,
-            photoUrl: true,
-          },
-        },
-      },
-      orderBy: {
-        departureTime: 'asc',
-      },
+            photoUrl: true
+          }
+        }
+      }
     });
 
-    return rides.map((ride) => ({
-      id: ride.id,
-      originLat: ride.originLat,
-      originLng: ride.originLng,
-      destinationLat: ride.destinationLat,
-      destinationLng: ride.destinationLng,
-      departureTime: ride.departureTime,
-      availableSeats: ride.availableSeats,
-      costPerSeat: Number(ride.costPerSeat),
-      driver: {
-        name: ride.driver.name,
-        photoUrl: ride.driver.photoUrl,
-      },
-    }));
+    const ridesWithDistance = rides.map((ride) => {
+      const distanceKm =
+        userLat !== undefined && userLng !== undefined
+          ? haversine(userLat, userLng, ride.originLat, ride.originLng)
+          : 0;
+
+      return {
+        id: ride.id,
+        originLat: ride.originLat,
+        originLng: ride.originLng,
+        destinationLat: ride.destinationLat,
+        destinationLng: ride.destinationLng,
+        departureTime: ride.departureTime,
+        availableSeats: ride.availableSeats,
+        costPerSeat: Number(ride.costPerSeat),
+        distanceKm: Math.round(distanceKm * 100) / 100,
+        driver: {
+          name: ride.driver.name,
+          photoUrl: ride.driver.photoUrl
+        }
+      };
+    });
+
+    if (userLat !== undefined && userLng !== undefined) {
+      ridesWithDistance.sort((a, b) => a.distanceKm - b.distanceKm);
+    } else {
+      ridesWithDistance.sort(
+        (a, b) => a.departureTime.getTime() - b.departureTime.getTime()
+      );
+    }
+
+    return ridesWithDistance;
   }
 
   async getRideById(rideId: string): Promise<RideWithDriver> {
@@ -144,10 +168,10 @@ export class RideService {
           select: {
             id: true,
             name: true,
-            photoUrl: true,
-          },
-        },
-      },
+            photoUrl: true
+          }
+        }
+      }
     });
 
     if (!ride) {
@@ -179,13 +203,13 @@ export class RideService {
       costPerSeat: Number(ride.costPerSeat),
       status: ride.status,
       createdAt: ride.createdAt,
-      driver: ride.driver,
+      driver: ride.driver
     };
   }
 
   async cancelRide(rideId: string, userId: string): Promise<Ride> {
     const ride = await prisma.ride.findUnique({
-      where: { id: rideId },
+      where: { id: rideId }
     });
 
     if (!ride) {
@@ -203,22 +227,22 @@ export class RideService {
     await prisma.$transaction(async (tx) => {
       await tx.ride.update({
         where: { id: rideId },
-        data: { status: 'CANCELLED' },
+        data: { status: 'CANCELLED' }
       });
 
       await tx.rideRequest.updateMany({
         where: {
           rideId,
-          status: 'ACCEPTED',
+          status: 'ACCEPTED'
         },
         data: {
-          status: 'CANCELLED',
-        },
+          status: 'CANCELLED'
+        }
       });
     });
 
     const cancelledRide = await prisma.ride.findUnique({
-      where: { id: rideId },
+      where: { id: rideId }
     });
 
     if (!cancelledRide) {

@@ -2,11 +2,16 @@ import type { Request, Response, NextFunction } from 'express';
 import { RideService } from '../services/ride.service';
 import { AppError } from '../lib/app-error';
 import type { CreateRideInput } from '../schemas/ride.schema';
+import type { ListRidesQuery } from '../schemas/ride.query.schema';
 
 const rideService = new RideService();
 
 export class RideController {
-  async createRide(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async createRide(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
       const userId = req.user?.sub;
 
@@ -23,11 +28,16 @@ export class RideController {
     }
   }
 
-  async listRides(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async listRides(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
       const userId = req.user?.sub || '';
+      const { lat, lng } = req.query as unknown as ListRidesQuery;
 
-      const rides = await rideService.listActiveRides(userId);
+      const rides = await rideService.listActiveRides(userId, lat, lng);
 
       res.status(200).json(rides);
     } catch (error) {
@@ -35,7 +45,11 @@ export class RideController {
     }
   }
 
-  async getRideById(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getRideById(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
       const id = req.params.id as string;
 
@@ -47,7 +61,11 @@ export class RideController {
     }
   }
 
-  async cancelRide(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async cancelRide(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
       const id = req.params.id as string;
       const userId = req.user?.sub;
