@@ -61,10 +61,10 @@ export class RideService {
         destinationLng: data.destinationLng,
         totalSeats: data.totalSeats,
         availableSeats: data.totalSeats,
-        costPerKm: 0,
-        distanceKm: 0,
-        estimatedTotalCost: 0,
-        costPerSeat: 0,
+        costPerKm: data.costPerKm ?? 0,
+        distanceKm: data.distanceKm ?? 0,
+        estimatedTotalCost: data.estimatedTotalCost ?? 0,
+        costPerSeat: data.costPerSeat ?? 0,
         status: 'ACTIVE'
       },
       include: {
