@@ -26,6 +26,16 @@ interface RideWithDriver {
     name: string;
     photoUrl: string | null;
   };
+  requests?: Array<{
+    id: string;
+    passengerId: string;
+    status: string;
+    requestedSeats: number;
+    passenger: {
+      id: string;
+      name: string;
+    };
+  }>;
 }
 
 interface MapRideResponse {
@@ -49,6 +59,17 @@ export class RideService {
     driverId: string,
     data: CreateRideInput
   ): Promise<RideWithDriver> {
+    const activeRide = await prisma.ride.findFirst({
+      where: {
+        driverId,
+        status: 'ACTIVE'
+      }
+    });
+
+    if (activeRide) {
+      throw new AppError('Driver already has an active ride', 400);
+    }
+
     const ride = await prisma.ride.create({
       data: {
         driverId,
@@ -160,6 +181,44 @@ export class RideService {
     return ridesWithDistance;
   }
 
+  async getDriverRides(driverId: string) {
+    const rides = await prisma.ride.findMany({
+      where: {
+        driverId,
+        status: 'ACTIVE',
+        departureTime: { gte: new Date() },
+      },
+      orderBy: { departureTime: 'asc' },
+      include: {
+        requests: {
+          where: { status: 'PENDING' },
+          orderBy: { createdAt: 'asc' },
+          include: {
+            passenger: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    return rides.map((r) => ({
+      id: r.id,
+      originAddress: r.originAddress,
+      destinationAddress: r.destinationAddress,
+      departureTime: r.departureTime,
+      availableSeats: r.availableSeats,
+      totalSeats: r.totalSeats,
+      pendingRequests: r.requests.map((req) => ({
+        id: req.id,
+        requestedSeats: req.requestedSeats,
+        pickupLocation: req.pickupLocation,
+        dropoffLocation: req.dropoffLocation,
+        estimatedCost: Number(req.estimatedCost),
+        createdAt: req.createdAt,
+        passenger: req.passenger,
+      })),
+    }));
+  }
+
   async getRideById(rideId: string): Promise<RideWithDriver> {
     const ride = await prisma.ride.findUnique({
       where: { id: rideId },
@@ -169,6 +228,16 @@ export class RideService {
             id: true,
             name: true,
             photoUrl: true
+          }
+        },
+        requests: {
+          where: {
+            status: { notIn: ['REJECTED', 'CANCELLED'] }
+          },
+          include: {
+            passenger: {
+              select: { id: true, name: true }
+            }
           }
         }
       }
@@ -203,7 +272,14 @@ export class RideService {
       costPerSeat: Number(ride.costPerSeat),
       status: ride.status,
       createdAt: ride.createdAt,
-      driver: ride.driver
+      driver: ride.driver,
+      requests: ride.requests.map((r) => ({
+        id: r.id,
+        passengerId: r.passengerId,
+        status: r.status,
+        requestedSeats: r.requestedSeats,
+        passenger: r.passenger
+      }))
     };
   }
 

@@ -79,7 +79,7 @@ export class RideRequestService {
     return request;
   }
 
-  async updateRequestStatus(driverId: string, requestId: string, status: 'ACCEPTED' | 'REJECTED'): Promise<RideRequest> {
+  async updateRequestStatus(userId: string, requestId: string, status: 'ACCEPTED' | 'REJECTED' | 'CANCELLED'): Promise<RideRequest> {
     const request = await prisma.rideRequest.findUnique({
       where: { id: requestId },
       include: {
@@ -92,7 +92,20 @@ export class RideRequestService {
       throw new AppError('Ride request not found', 404);
     }
 
-    if (request.ride.driverId !== driverId) {
+    if (status === 'CANCELLED') {
+      if (request.passengerId !== userId) {
+        throw new AppError('Only the passenger can cancel this request', 403);
+      }
+      if (request.status !== 'PENDING') {
+        throw new AppError('Only pending requests can be cancelled', 400);
+      }
+      return prisma.rideRequest.update({
+        where: { id: requestId },
+        data: { status: 'CANCELLED' },
+      });
+    }
+
+    if (request.ride.driverId !== userId) {
       throw new AppError('Only the driver can update this request', 403);
     }
 

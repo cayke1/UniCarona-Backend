@@ -9,6 +9,7 @@ const userRoutes = Router();
  * GET /api/users/me
  */
 userRoutes.get('/me', authMiddleware, userController.getMe);
+userRoutes.get('/me/requests', authMiddleware, userController.getMyRequests);
 
 /**
  * @example Rota protegida para atualizar o perfil do usuário logado

@@ -4,6 +4,9 @@ import { AppError } from '../lib/app-error';
 import type { CreateRideInput } from '../schemas/ride.schema';
 import type { ListRidesQuery } from '../schemas/ride.query.schema';
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const rideService = new RideService();
 
 export class RideController {
@@ -23,6 +26,21 @@ export class RideController {
       const ride = await rideService.createRide(userId, data);
 
       res.status(201).json(ride);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMyRides(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) throw new AppError('Unauthorized: Token context missing', 401);
+      const rides = await rideService.getDriverRides(userId);
+      res.status(200).json(rides);
     } catch (error) {
       next(error);
     }
@@ -53,6 +71,10 @@ export class RideController {
     try {
       const id = req.params.id as string;
 
+      if (!UUID_REGEX.test(id)) {
+        throw new AppError('Invalid ride ID format', 400);
+      }
+
       const ride = await rideService.getRideById(id);
 
       res.status(200).json(ride);
@@ -69,6 +91,10 @@ export class RideController {
     try {
       const id = req.params.id as string;
       const userId = req.user?.sub;
+
+      if (!UUID_REGEX.test(id)) {
+        throw new AppError('Invalid ride ID format', 400);
+      }
 
       if (!userId) {
         throw new AppError('Unauthorized: Token context missing', 401);
