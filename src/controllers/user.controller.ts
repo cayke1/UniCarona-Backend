@@ -31,6 +31,39 @@ export class UserController {
       next(error);
     }
   }
+
+  async promoteToDriver(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      const { pixKey } = req.body;
+
+      if (!userId) {
+        throw new AppError('Unauthorized: Token context missing', 401);
+      }
+
+      const user = await userService.promoteToDriver(userId, pixKey);
+
+      res.status(200).json(user);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateMe(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+
+      if (!userId) {
+        throw new AppError('Unauthorized: Token context missing', 401);
+      }
+
+      const user = await userService.updateProfile(userId, req.body);
+
+      res.status(200).json(user);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const userController = new UserController();
