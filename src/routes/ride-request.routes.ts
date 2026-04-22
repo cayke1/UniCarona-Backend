@@ -10,7 +10,6 @@ const rideRequestRoutes = Router();
 rideRequestRoutes.patch(
   '/:id',
   authMiddleware,
-  requireRole('DRIVER'),
   validateData(updateRideRequestStatusSchema),
   rideRequestController.updateRequestStatus
 );

@@ -24,15 +24,15 @@ export class RideRequestController {
 
   async updateRequestStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const driverId = req.user?.sub;
+      const userId = req.user?.sub;
       const requestId = req.params.id as string;
 
-      if (!driverId) {
+      if (!userId) {
         throw new AppError('Unauthorized: Token context missing', 401);
       }
 
       const { status } = req.body as UpdateRideRequestStatusInput;
-      const request = await rideRequestService.updateRequestStatus(driverId, requestId, status);
+      const request = await rideRequestService.updateRequestStatus(userId, requestId, status);
 
       res.status(200).json(request);
     } catch (error) {
