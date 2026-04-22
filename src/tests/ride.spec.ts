@@ -185,6 +185,10 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
   });
 
   describe('T-08: GET /rides/:id (Detalhes da Carona)', () => {
+    beforeEach(async () => {
+      await prisma.ride.deleteMany({ where: { driverId, status: 'ACTIVE' } });
+    });
+
     it('Deve retornar detalhes da carona (200)', async () => {
       const createResponse = await request(app)
         .post('/api/rides')
@@ -221,6 +225,10 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
   });
 
   describe('T-11: DELETE /rides/:id (Cancelar Carona)', () => {
+    beforeEach(async () => {
+      await prisma.ride.deleteMany({ where: { driverId, status: 'ACTIVE' } });
+    });
+
     it('Deve cancelar carona do próprio driver (200)', async () => {
       const createResponse = await request(app)
         .post('/api/rides')
