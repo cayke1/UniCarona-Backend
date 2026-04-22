@@ -9,5 +9,6 @@ const userRoutes = Router();
  * GET /api/users/me
  */
 userRoutes.get('/me', authMiddleware, userController.getMe);
+userRoutes.get('/me/requests', authMiddleware, userController.getMyRequests);
 
 export { userRoutes };
