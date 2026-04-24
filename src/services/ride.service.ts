@@ -72,7 +72,7 @@ export class RideService {
     }
 
     let distanceKm = data.distanceKm ?? 0;
-    let costPerKm = data.costPerKm ?? parseFloat(process.env.COST_PER_KM ?? '1.5');
+    const costPerKm = data.costPerKm ?? parseFloat(process.env.COST_PER_KM ?? '1.5');
 
     if (data.originLat && data.originLng && data.destinationLat && data.destinationLng) {
       try {
