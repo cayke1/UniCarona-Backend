@@ -125,11 +125,11 @@ export class RideRequestService {
           },
         });
 
-        // Update request status to AWAITING_PAYMENT as per Task 2
+        // Update request status to ACCEPTED
         return await tx.rideRequest.update({
           where: { id: requestId },
           data: {
-            status: 'AWAITING_PAYMENT',
+            status: 'ACCEPTED',
           },
         });
       });
