@@ -100,7 +100,7 @@ export class RideRequestService {
       throw new AppError('This request has already been processed', 400);
     }
 
-    if (request.ride.departureTime < new Date()) {
+    if (status === 'ACCEPTED' && request.ride.departureTime < new Date()) {
       throw new AppError('The ride has already departed', 400);
     }
 
