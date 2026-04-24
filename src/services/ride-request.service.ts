@@ -6,7 +6,6 @@ import type { RideRequest } from '@prisma/client';
 
 export class RideRequestService {
   async createRequest(passengerId: string, rideId: string, data: CreateRideRequestInput): Promise<RideRequest> {
-    // Validação básica de UUID para evitar erro interno do Prisma
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(rideId)) {
       throw new AppError('ID de carona inválido (deve ser um UUID)', 400);
@@ -50,9 +49,8 @@ export class RideRequestService {
       throw new AppError('You have already requested this ride', 400);
     }
 
-    // Pricing calculation
     const estimatedCost = Number(ride.costPerSeat) * data.requestedSeats;
-    const appFee = estimatedCost * 0.1; // 10% app fee
+    const appFee = estimatedCost * 0.1;
     const totalCharged = estimatedCost + appFee;
 
     const request = await prisma.rideRequest.create({
@@ -69,7 +67,6 @@ export class RideRequestService {
       },
     });
 
-    // Notify driver
     await notificationService.notify(
       ride.driverId,
       'New Ride Request',
@@ -105,7 +102,6 @@ export class RideRequestService {
     }
 
     if (status === 'ACCEPTED') {
-      // Re-validate seats
       const currentRide = await prisma.ride.findUnique({
         where: { id: request.rideId },
       });
@@ -115,7 +111,6 @@ export class RideRequestService {
       }
 
       const updatedRequest = await prisma.$transaction(async (tx) => {
-        // Update ride available seats
         await tx.ride.update({
           where: { id: request.rideId },
           data: {
@@ -125,7 +120,6 @@ export class RideRequestService {
           },
         });
 
-        // Update request status to ACCEPTED
         return await tx.rideRequest.update({
           where: { id: requestId },
           data: {

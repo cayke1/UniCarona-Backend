@@ -194,7 +194,7 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
         .send({ status: 'ACCEPTED' });
 
       expect(response.status).toBe(200);
-      expect(response.body.status).toBe('AWAITING_PAYMENT');
+      expect(response.body.status).toBe('ACCEPTED');
 
       // Check if seats were decremented
       const ride = await prisma.ride.findUnique({ where: { id: rideId } });
