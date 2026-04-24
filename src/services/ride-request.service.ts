@@ -20,19 +20,19 @@ export class RideRequestService {
     }
 
     if (ride.status !== 'ACTIVE') {
-      throw new AppError('Ride is not active', 400);
+      throw new AppError('This ride is no longer active', 400);
     }
 
     if (ride.driverId === passengerId) {
-      throw new AppError('You cannot request a ride for yourself', 400);
+      throw new AppError('Drivers cannot request a seat on their own ride', 400);
     }
 
     if (ride.availableSeats < data.requestedSeats) {
-      throw new AppError('Not enough available seats', 400);
+      throw new AppError(`Not enough seats available. Requested: ${data.requestedSeats}, Available: ${ride.availableSeats}`, 400);
     }
 
     if (ride.departureTime < new Date()) {
-      throw new AppError('Ride has already departed', 400);
+      throw new AppError('Cannot request a ride that has already departed', 400);
     }
 
     const existingRequest = await prisma.rideRequest.findFirst({
@@ -46,7 +46,7 @@ export class RideRequestService {
     });
 
     if (existingRequest) {
-      throw new AppError('You have already requested this ride', 400);
+      throw new AppError('You already have an active request for this ride', 400);
     }
 
     const estimatedCost = Number(ride.costPerSeat) * data.requestedSeats;
@@ -90,15 +90,16 @@ export class RideRequestService {
     }
 
     if (request.ride.driverId !== driverId) {
-      throw new AppError('Only the driver can update this request', 403);
+      throw new AppError('Only the driver who created the ride can update request status', 403);
     }
 
     if (request.status !== 'PENDING') {
-      throw new AppError('This request has already been processed', 400);
+      throw new AppError(`This request is already ${request.status.toLowerCase()}`, 400);
     }
 
+    // Validation: Block acceptance after departure time
     if (status === 'ACCEPTED' && request.ride.departureTime < new Date()) {
-      throw new AppError('The ride has already departed', 400);
+      throw new AppError('Cannot accept requests for a ride that has already departed', 400);
     }
 
     if (status === 'ACCEPTED') {
@@ -106,10 +107,16 @@ export class RideRequestService {
         where: { id: request.rideId },
       });
 
-      if (!currentRide || currentRide.availableSeats < request.requestedSeats) {
-        throw new AppError('No more seats available for this ride', 400);
+      if (!currentRide || currentRide.status !== 'ACTIVE') {
+        throw new AppError('Ride is no longer active', 400);
       }
 
+      if (currentRide.availableSeats < request.requestedSeats) {
+        throw new AppError(`Not enough seats available anymore. Requested: ${request.requestedSeats}, Available: ${currentRide.availableSeats}`, 400);
+      }
+
+      // Transition: PENDING -> ACCEPTED -> AWAITING_PAYMENT
+      // We move directly to AWAITING_PAYMENT to allow the passenger to pay immediately
       const updatedRequest = await prisma.$transaction(async (tx) => {
         await tx.ride.update({
           where: { id: request.rideId },
@@ -151,6 +158,58 @@ export class RideRequestService {
 
       return updatedRequest;
     }
+  }
+
+  async cancelRequest(userId: string, requestId: string): Promise<RideRequest> {
+    const request = await prisma.rideRequest.findUnique({
+      where: { id: requestId },
+      include: { ride: true },
+    });
+
+    if (!request) {
+      throw new AppError('Ride request not found', 404);
+    }
+
+    if (request.passengerId !== userId) {
+      throw new AppError('Only the passenger who created the request can cancel it', 403);
+    }
+
+    if (request.status === 'CANCELLED' || request.status === 'REJECTED') {
+      throw new AppError(`Request is already ${request.status.toLowerCase()}`, 400);
+    }
+
+    if (request.status === 'PAID') {
+      throw new AppError('Cannot cancel a request that has already been paid. Please request a refund.', 400);
+    }
+
+    const updatedRequest = await prisma.$transaction(async (tx) => {
+      // If it was already accepted (AWAITING_PAYMENT), return the seats
+      if (request.status === 'AWAITING_PAYMENT' || request.status === 'ACCEPTED') {
+        await tx.ride.update({
+          where: { id: request.rideId },
+          data: {
+            availableSeats: {
+              increment: request.requestedSeats,
+            },
+          },
+        });
+      }
+
+      return await tx.rideRequest.update({
+        where: { id: requestId },
+        data: {
+          status: 'CANCELLED',
+        },
+      });
+    });
+
+    await notificationService.notify(
+      request.ride.driverId,
+      'Ride Request Cancelled',
+      `A passenger has cancelled their request for your ride.`
+    );
+
+    return updatedRequest;
   }
 }
 

@@ -160,6 +160,44 @@ export class RideService {
     return ridesWithDistance;
   }
 
+  async getDriverRides(driverId: string) {
+    const rides = await prisma.ride.findMany({
+      where: {
+        driverId,
+        status: 'ACTIVE',
+        departureTime: { gte: new Date() },
+      },
+      orderBy: { departureTime: 'asc' },
+      include: {
+        requests: {
+          include: {
+            passenger: { select: { id: true, name: true, photoUrl: true } },
+          },
+        },
+      },
+    });
+
+    return rides.map((r) => ({
+      id: r.id,
+      originAddress: r.originAddress,
+      destinationAddress: r.destinationAddress,
+      departureTime: r.departureTime,
+      availableSeats: r.availableSeats,
+      totalSeats: r.totalSeats,
+      status: r.status,
+      requests: r.requests.map((req) => ({
+        id: req.id,
+        status: req.status,
+        requestedSeats: req.requestedSeats,
+        pickupLocation: req.pickupLocation,
+        dropoffLocation: req.dropoffLocation,
+        estimatedCost: Number(req.estimatedCost),
+        createdAt: req.createdAt,
+        passenger: req.passenger,
+      })),
+    }));
+  }
+
   async getRideById(rideId: string): Promise<RideWithDriver> {
     const ride = await prisma.ride.findUnique({
       where: { id: rideId },

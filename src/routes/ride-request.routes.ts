@@ -15,4 +15,10 @@ rideRequestRoutes.patch(
   rideRequestController.updateRequestStatus
 );
 
+rideRequestRoutes.delete(
+  '/:id',
+  authMiddleware,
+  rideRequestController.cancelRequest
+);
+
 export { rideRequestRoutes };

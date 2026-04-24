@@ -20,6 +20,19 @@ export class UserController {
       next(error);
     }
   }
+
+  async getMyRequests(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) {
+        throw new AppError('Unauthorized: Token context missing', 401);
+      }
+      const requests = await userService.getMyRequests(userId);
+      res.status(200).json(requests);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const userController = new UserController();

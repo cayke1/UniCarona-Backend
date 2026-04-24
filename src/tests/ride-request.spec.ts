@@ -112,7 +112,7 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.message).toMatch(/already requested/i);
+      expect(response.body.message).toMatch(/already have an active request/i);
     });
 
     it('Deve retornar 400 se o passageiro for o motorista', async () => {
@@ -127,7 +127,7 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
 
       expect(response.status).toBe(400);
       expect(response.body.message).toMatch(
-        /cannot request a ride for yourself/i
+        /cannot request a seat on their own ride/i
       );
     });
 
@@ -156,7 +156,7 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.message).toMatch(/not enough available seats/i);
+      expect(response.body.message).toMatch(/not enough seats available/i);
 
       await prisma.refreshToken.deleteMany({
         where: { user: { email: p2Email } }

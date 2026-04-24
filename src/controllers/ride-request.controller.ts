@@ -39,6 +39,23 @@ export class RideRequestController {
       next(error);
     }
   }
+
+  async cancelRequest(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      const requestId = req.params.id as string;
+
+      if (!userId) {
+        throw new AppError('Unauthorized: Token context missing', 401);
+      }
+
+      const request = await rideRequestService.cancelRequest(userId, requestId);
+
+      res.status(200).json(request);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const rideRequestController = new RideRequestController();

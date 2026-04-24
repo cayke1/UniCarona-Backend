@@ -45,6 +45,23 @@ export class RideController {
     }
   }
 
+  async getMyRides(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) {
+        throw new AppError('Unauthorized: Token context missing', 401);
+      }
+      const rides = await rideService.getDriverRides(userId);
+      res.status(200).json(rides);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getRideById(
     req: Request,
     res: Response,

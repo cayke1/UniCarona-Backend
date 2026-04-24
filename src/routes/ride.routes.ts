@@ -24,6 +24,13 @@ rideRoutes.get(
 );
 
 rideRoutes.get(
+  '/me',
+  authMiddleware,
+  requireRole('DRIVER'),
+  rideController.getMyRides
+);
+
+rideRoutes.get(
   '/:id',
   authMiddleware,
   rideController.getRideById
