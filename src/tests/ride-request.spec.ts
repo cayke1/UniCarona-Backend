@@ -224,4 +224,91 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
       expect(response.status).toBe(403);
     });
   });
+
+  describe('Status Transitions', () => {
+    let requestId: string;
+
+    beforeEach(async () => {
+      await prisma.ride.update({
+        where: { id: rideId },
+        data: { availableSeats: 2 }
+      });
+      await prisma.rideRequest.deleteMany({ where: { rideId } });
+
+      const res = await request(app)
+        .post(`/api/rides/${rideId}/requests`)
+        .set('Authorization', `Bearer ${passengerToken}`)
+        .send({
+          pickupLocation: 'Ponto A',
+          dropoffLocation: 'Ponto B',
+          requestedSeats: 1
+        });
+      requestId = res.body.id;
+    });
+
+    it('Deve bloquear transição inválida REJECTED -> ACCEPTED (400)', async () => {
+      await request(app)
+        .patch(`/api/requests/${requestId}`)
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({ status: 'REJECTED' });
+
+      const response = await request(app)
+        .patch(`/api/requests/${requestId}`)
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({ status: 'ACCEPTED' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toMatch(/invalid.*transition/i);
+    });
+
+    it('Deve bloquear aceite após departureTime (400)', async () => {
+      await prisma.ride.update({
+        where: { id: rideId },
+        data: { departureTime: new Date(Date.now() - 60 * 60 * 1000) }
+      });
+
+      const response = await request(app)
+        .patch(`/api/requests/${requestId}`)
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({ status: 'ACCEPTED' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toMatch(/already departed/i);
+    });
+  });
+
+  describe('GET Endpoints', () => {
+    it('Deve listar minhas solicitações (200)', async () => {
+      const response = await request(app)
+        .get('/api/requests/me')
+        .set('Authorization', `Bearer ${passengerToken}`);
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+    });
+
+    it('Deve buscar solicitação por ID (200)', async () => {
+      const requests = await prisma.rideRequest.findMany({
+        where: { rideId, passengerId, status: 'PENDING' }
+      });
+
+      if (requests.length > 0) {
+        const response = await request(app)
+          .get(`/api/requests/${requests[0].id}`)
+          .set('Authorization', `Bearer ${passengerToken}`);
+
+        expect(response.status).toBe(200);
+        expect(response.body.id).toBe(requests[0].id);
+      }
+    });
+
+    it('Deve listar pedidos da carona para o motorista (200)', async () => {
+      const response = await request(app)
+        .get(`/api/rides/${rideId}/requests`)
+        .set('Authorization', `Bearer ${driverToken}`);
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+    });
+  });
 });
