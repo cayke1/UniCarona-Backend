@@ -6,6 +6,18 @@ import { updateRideRequestStatusSchema } from '../schemas/ride-request.schema';
 
 const rideRequestRoutes = Router();
 
+rideRequestRoutes.get(
+  '/me',
+  authMiddleware,
+  rideRequestController.getMyRequests
+);
+
+rideRequestRoutes.get(
+  '/:id',
+  authMiddleware,
+  rideRequestController.getRequestById
+);
+
 rideRequestRoutes.patch(
   '/:id',
   authMiddleware,

@@ -49,4 +49,11 @@ rideRoutes.post(
   rideRequestController.createRequest
 );
 
+rideRoutes.get(
+  '/:id/requests',
+  authMiddleware,
+  requireRole('DRIVER'),
+  rideRequestController.getRideRequests
+);
+
 export { rideRoutes };

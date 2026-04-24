@@ -88,6 +88,9 @@ model RideRequest {
   ride            Ride              @relation(fields: [rideId], references: [id])
   transactions    Transaction[]
 
+  @@index([rideId])
+  @@index([passengerId])
+  @@index([status])
   @@map("ride_requests")
 }
 
