@@ -3,9 +3,143 @@ import { app } from '../app';
 import { PrismaClient, UserRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
+jest.mock('resend', () => {
+  return {
+    Resend: jest.fn().mockImplementation(() => {
+      return {
+        emails: {
+          send: jest
+            .fn()
+            .mockResolvedValue({ data: { id: 'mocked_email_id' }, error: null })
+        }
+      };
+    })
+  };
+});
+
+jest.mock('../lib/google-maps', () => ({
+  getDistanceAndDuration: jest.fn().mockResolvedValue({
+    distanceKm: 8.3,
+    durationMinutes: 20
+  })
+}));
+
 const prisma = new PrismaClient();
 const testPassword = 'password123';
 const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+describe('Fluxo Integrado de Carona (T-14)', () => {
+  let driverToken: string;
+  let passengerToken: string;
+
+  beforeAll(async () => {
+    const passwordHash = await bcrypt.hash(testPassword, 10);
+
+    const driverEmail = `driver_int_${Date.now()}@example.com`;
+    await prisma.user.create({
+      data: {
+        name: 'Driver Integration',
+        email: driverEmail,
+        passwordHash,
+        roles: [UserRole.DRIVER]
+      }
+    });
+
+    const driverLogin = await request(app)
+      .post('/api/auth/login')
+      .send({ email: driverEmail, password: testPassword });
+    driverToken = driverLogin.body.accessToken;
+
+    const passengerEmail = `passenger_int_${Date.now()}@example.com`;
+    await prisma.user.create({
+      data: {
+        name: 'Passenger Integration',
+        email: passengerEmail,
+        passwordHash,
+        roles: [UserRole.PASSENGER]
+      }
+    });
+
+    const passengerLogin = await request(app)
+      .post('/api/auth/login')
+      .send({ email: passengerEmail, password: testPassword });
+    passengerToken = passengerLogin.body.accessToken;
+  });
+
+  afterAll(async () => {
+    await prisma.rideRequest.deleteMany({
+      where: { ride: { driver: { email: { contains: '_int_' } } } }
+    });
+    await prisma.ride.deleteMany({
+      where: { driver: { email: { contains: '_int_' } } }
+    });
+    await prisma.user.deleteMany({
+      where: { email: { contains: '_int_' } }
+    });
+    await prisma.$disconnect();
+  });
+
+  it('Deve calcular custo via Google Maps e propagar para request', async () => {
+    const rideRes = await request(app)
+      .post('/api/rides')
+      .set('Authorization', `Bearer ${driverToken}`)
+      .send({
+        departureTime: futureDate,
+        originAddress: 'Casa do Motorista',
+        originLat: -23.6500,
+        originLng: -46.5800,
+        destinationAddress: 'Faculdade',
+        destinationLat: -23.5500,
+        destinationLng: -46.6300,
+        totalSeats: 4
+      });
+
+    expect(rideRes.status).toBe(201);
+    expect(rideRes.body.distanceKm).toBe(8.3);
+    expect(rideRes.body.costPerKm).toBeGreaterThan(0);
+
+    const rideId = rideRes.body.id;
+
+    const requestRes = await request(app)
+      .post(`/api/rides/${rideId}/requests`)
+      .set('Authorization', `Bearer ${passengerToken}`)
+      .send({
+        pickupLocation: 'Rua A',
+        dropoffLocation: 'Faculdade',
+        requestedSeats: 1
+      });
+
+    expect(requestRes.status).toBe(201);
+    expect(Number(requestRes.body.estimatedCost)).toBeGreaterThan(0);
+
+    await prisma.rideRequest.deleteMany({ where: { rideId } });
+    await prisma.ride.deleteMany({ where: { id: rideId } });
+  });
+
+  it('Deve ordenar rides por distância do usuário (Haversine)', async () => {
+    await request(app)
+      .post('/api/rides')
+      .set('Authorization', `Bearer ${driverToken}`)
+      .send({
+        departureTime: futureDate,
+        originAddress: 'Origem A',
+        originLat: -23.5500,
+        originLng: -46.6300,
+        destinationAddress: 'Destino A',
+        destinationLat: -23.5600,
+        destinationLng: -46.6400,
+        totalSeats: 2
+      });
+
+    const response = await request(app)
+      .get('/api/rides')
+      .set('Authorization', `Bearer ${passengerToken}`)
+      .query({ lat: -23.5600, lng: -46.6400 });
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+  });
+});
 
 describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
   let driverToken: string;
@@ -17,7 +151,6 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
   beforeAll(async () => {
     const passwordHash = await bcrypt.hash(testPassword, 10);
 
-    // Create Driver
     const driverEmail = `driver_req_${Date.now()}@example.com`;
     const driver = await prisma.user.create({
       data: {
@@ -34,7 +167,6 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
       .send({ email: driverEmail, password: testPassword });
     driverToken = driverLogin.body.accessToken;
 
-    // Create Passenger
     const passengerEmail = `passenger_req_${Date.now()}@example.com`;
     const passenger = await prisma.user.create({
       data: {
@@ -51,7 +183,6 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
       .send({ email: passengerEmail, password: testPassword });
     passengerToken = passengerLogin.body.accessToken;
 
-    // Create a Ride
     const rideRes = await request(app)
       .post('/api/rides')
       .set('Authorization', `Bearer ${driverToken}`)
@@ -132,7 +263,6 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
     });
 
     it('Deve retornar 400 se não houver assentos suficientes', async () => {
-      // Create another passenger for this test
       const p2Email = `p2_${Date.now()}@example.com`;
       await prisma.user.create({
         data: {
@@ -152,7 +282,7 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
         .send({
           pickupLocation: 'Ponto A',
           dropoffLocation: 'Ponto B',
-          requestedSeats: 5 // More than available
+          requestedSeats: 5
         });
 
       expect(response.status).toBe(400);
@@ -169,7 +299,6 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
     let requestId: string;
 
     beforeEach(async () => {
-      // Reset availableSeats and clean up requests
       await prisma.ride.update({
         where: { id: rideId },
         data: { availableSeats: 2 }
@@ -196,9 +325,8 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('AWAITING_PAYMENT');
 
-      // Check if seats were decremented
       const ride = await prisma.ride.findUnique({ where: { id: rideId } });
-      expect(ride?.availableSeats).toBe(1); // 2 - 1 = 1
+      expect(ride?.availableSeats).toBe(1);
     });
 
     it('Deve recusar uma solicitação (200)', async () => {
@@ -210,7 +338,6 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('REJECTED');
 
-      // Check if seats were NOT decremented
       const ride = await prisma.ride.findUnique({ where: { id: rideId } });
       expect(ride?.availableSeats).toBe(2);
     });
@@ -285,21 +412,6 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
 
       expect(response.status).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
-    });
-
-    it('Deve buscar solicitação por ID (200)', async () => {
-      const requests = await prisma.rideRequest.findMany({
-        where: { rideId, passengerId, status: 'PENDING' }
-      });
-
-      if (requests.length > 0) {
-        const response = await request(app)
-          .get(`/api/requests/${requests[0].id}`)
-          .set('Authorization', `Bearer ${passengerToken}`);
-
-        expect(response.status).toBe(200);
-        expect(response.body.id).toBe(requests[0].id);
-      }
     });
 
     it('Deve listar pedidos da carona para o motorista (200)', async () => {

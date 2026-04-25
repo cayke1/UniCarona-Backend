@@ -17,6 +17,13 @@ jest.mock('resend', () => {
   };
 });
 
+jest.mock('../lib/google-maps', () => ({
+  getDistanceAndDuration: jest.fn().mockResolvedValue({
+    distanceKm: 5.5,
+    durationMinutes: 15
+  })
+}));
+
 const prisma = new PrismaClient();
 const testEmailDriver = `driver_${Date.now()}@example.com`;
 const testPassword = 'password123';
@@ -53,6 +60,10 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
   });
 
   describe('T-06: POST /rides (Criar Carona)', () => {
+    beforeEach(async () => {
+      await prisma.ride.deleteMany({ where: { driverId, status: 'ACTIVE' } });
+    });
+
     it('Deve criar uma carona com sucesso (201)', async () => {
       const response = await request(app)
         .post('/api/rides')
@@ -72,6 +83,28 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
       expect(response.body).toHaveProperty('id');
       expect(response.body).toHaveProperty('driver');
       expect(response.body.status).toBe('ACTIVE');
+    });
+
+    it('Deve calcular distância e custo automaticamente via Google Maps', async () => {
+      const response = await request(app)
+        .post('/api/rides')
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({
+          departureTime: futureDate,
+          originAddress: 'Universidade Federal do ABC',
+          originLat: -23.6445,
+          originLng: -46.5761,
+          destinationAddress: 'Terminal Santo André',
+          destinationLat: -23.6678,
+          destinationLng: -46.4611,
+          totalSeats: 4
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body.distanceKm).toBe(5.5);
+      expect(response.body.estimatedTotalCost).toBeGreaterThan(0);
+      expect(response.body.costPerSeat).toBeGreaterThan(0);
+      expect(response.body.costPerKm).toBeGreaterThan(0);
     });
 
     it('Deve retornar 403 se usuário não é driver', async () => {

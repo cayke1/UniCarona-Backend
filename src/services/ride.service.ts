@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/app-error';
 import { haversine } from '../lib/haversine';
+import { getDistanceAndDuration } from '../lib/google-maps';
 import type { CreateRideInput } from '../schemas/ride.schema';
 import type { Ride } from '@prisma/client';
 
@@ -70,6 +71,32 @@ export class RideService {
       throw new AppError('Driver already has an active ride', 400);
     }
 
+    let distanceKm = data.distanceKm ?? 0;
+    const costPerKm = data.costPerKm ?? parseFloat(process.env.COST_PER_KM ?? '1.5');
+
+    if (data.originLat && data.originLng && data.destinationLat && data.destinationLng) {
+      try {
+        const { distanceKm: googleDistance } = await getDistanceAndDuration(
+          data.originLat,
+          data.originLng,
+          data.destinationLat,
+          data.destinationLng
+        );
+        distanceKm = googleDistance;
+      } catch (error) {
+        console.warn('Google Maps API failed, using Haversine fallback:', error);
+        distanceKm = haversine(
+          data.originLat,
+          data.originLng,
+          data.destinationLat,
+          data.destinationLng
+        );
+      }
+    }
+
+    const estimatedTotalCost = distanceKm * costPerKm;
+    const costPerSeat = estimatedTotalCost / data.totalSeats;
+
     const ride = await prisma.ride.create({
       data: {
         driverId,
@@ -82,10 +109,10 @@ export class RideService {
         destinationLng: data.destinationLng,
         totalSeats: data.totalSeats,
         availableSeats: data.totalSeats,
-        costPerKm: data.costPerKm ?? 0,
-        distanceKm: data.distanceKm ?? 0,
-        estimatedTotalCost: data.estimatedTotalCost ?? 0,
-        costPerSeat: data.costPerSeat ?? 0,
+        costPerKm,
+        distanceKm,
+        estimatedTotalCost,
+        costPerSeat,
         status: 'ACTIVE'
       },
       include: {
