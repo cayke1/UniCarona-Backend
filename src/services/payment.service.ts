@@ -44,7 +44,7 @@ export class PaymentService {
     }
 
     if (request.status === 'PAID') {
-      throw new AppError('Payment has already been processed', 400);
+      throw new AppError('Cannot process payment for request with status PAID', 400);
     }
 
     if (request.status !== 'AWAITING_PAYMENT') {
