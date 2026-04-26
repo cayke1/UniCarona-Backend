@@ -31,8 +31,7 @@ export class PaymentService {
           include: {
             driver: true
           }
-        },
-        passenger: true
+        }
       }
     });
 
@@ -42,6 +41,10 @@ export class PaymentService {
 
     if (request.passengerId !== passengerId) {
       throw new AppError('You are not authorized to pay for this request', 403);
+    }
+
+    if (request.status === 'PAID') {
+      throw new AppError('Payment has already been processed', 400);
     }
 
     if (request.status !== 'AWAITING_PAYMENT') {
@@ -56,6 +59,13 @@ export class PaymentService {
     const driverCreditAmount = Number(request.estimatedCost);
 
     const result = await prisma.$transaction(async (tx) => {
+      const existingTransaction = await tx.transaction.findFirst({
+        where: { requestId }
+      });
+      if (existingTransaction) {
+        throw new AppError('Payment has already been processed', 400);
+      }
+
       const updatedRequest = await tx.rideRequest.update({
         where: { id: requestId },
         data: { status: 'PAID' }
@@ -88,17 +98,18 @@ export class PaymentService {
       };
     });
 
-    await notificationService.notify(
-      request.ride.driverId,
-      'Payment Received',
-      `You received R$ ${driverCreditAmount.toFixed(2)} for the ride from ${request.pickupLocation} to ${request.dropoffLocation}.`
-    );
-
-    await notificationService.notify(
-      passengerId,
-      'Payment Confirmed',
-      `Your payment of R$ ${Number(request.totalCharged).toFixed(2)} has been confirmed.`
-    );
+    await Promise.allSettled([
+      notificationService.notify(
+        request.ride.driverId,
+        'Payment Received',
+        `You received R$ ${driverCreditAmount.toFixed(2)} for the ride from ${request.pickupLocation} to ${request.dropoffLocation}.`
+      ),
+      notificationService.notify(
+        passengerId,
+        'Payment Confirmed',
+        `Your payment of R$ ${Number(request.totalCharged).toFixed(2)} has been confirmed.`
+      )
+    ]);
 
     return {
       success: true,
