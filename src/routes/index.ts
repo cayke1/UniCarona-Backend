@@ -4,6 +4,7 @@ import { authRoutes } from './auth.routes';
 import { userRoutes } from './user.routes';
 import { rideRoutes } from './ride.routes';
 import { rideRequestRoutes } from './ride-request.routes';
+import { paymentRoutes } from './payment.routes';
 
 const routes = Router();
 
@@ -12,5 +13,6 @@ routes.use('/auth', authRoutes);
 routes.use('/users', userRoutes);
 routes.use('/rides', rideRoutes);
 routes.use('/requests', rideRequestRoutes);
+routes.use('/payments', paymentRoutes);
 
 export { routes };
