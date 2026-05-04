@@ -24,6 +24,13 @@ rideRoutes.get(
 );
 
 rideRoutes.get(
+  '/me',
+  authMiddleware,
+  requireRole('DRIVER'),
+  rideController.getMyRides
+);
+
+rideRoutes.get(
   '/:id',
   authMiddleware,
   rideController.getRideById
@@ -40,6 +47,13 @@ rideRoutes.post(
   authMiddleware,
   validateData(createRideRequestSchema),
   rideRequestController.createRequest
+);
+
+rideRoutes.get(
+  '/:id/requests',
+  authMiddleware,
+  requireRole('DRIVER'),
+  rideRequestController.getRideRequests
 );
 
 export { rideRoutes };

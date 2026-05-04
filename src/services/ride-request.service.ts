@@ -4,12 +4,27 @@ import { notificationService } from './notification.service';
 import type { CreateRideRequestInput } from '../schemas/ride-request.schema';
 import type { RideRequest } from '@prisma/client';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+type RideRequestStatusType = 'PENDING' | 'ACCEPTED' | 'AWAITING_PAYMENT' | 'PAID' | 'REJECTED' | 'CANCELLED';
+
+const VALID_TRANSITIONS: Record<RideRequestStatusType, RideRequestStatusType[]> = {
+  PENDING: ['ACCEPTED', 'REJECTED', 'CANCELLED'],
+  ACCEPTED: ['AWAITING_PAYMENT', 'CANCELLED'],
+  AWAITING_PAYMENT: ['PAID', 'CANCELLED'],
+  PAID: [],
+  REJECTED: [],
+  CANCELLED: [],
+};
+
+function isValidTransition(from: RideRequestStatusType, to: RideRequestStatusType): boolean {
+  return VALID_TRANSITIONS[from]?.includes(to) ?? false;
+}
+
 export class RideRequestService {
   async createRequest(passengerId: string, rideId: string, data: CreateRideRequestInput): Promise<RideRequest> {
-    // Validação básica de UUID para evitar erro interno do Prisma
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(rideId)) {
-      throw new AppError('ID de carona inválido (deve ser um UUID)', 400);
+    if (!UUID_REGEX.test(rideId)) {
+      throw new AppError('Invalid ride ID format', 400);
     }
 
     const ride = await prisma.ride.findUnique({
@@ -79,7 +94,11 @@ export class RideRequestService {
     return request;
   }
 
-  async updateRequestStatus(driverId: string, requestId: string, status: 'ACCEPTED' | 'REJECTED'): Promise<RideRequest> {
+  async updateRequestStatus(userId: string, requestId: string, status: 'ACCEPTED' | 'REJECTED' | 'CANCELLED'): Promise<RideRequest> {
+    if (!UUID_REGEX.test(requestId)) {
+      throw new AppError('Invalid request ID format', 400);
+    }
+
     const request = await prisma.rideRequest.findUnique({
       where: { id: requestId },
       include: {
@@ -92,7 +111,28 @@ export class RideRequestService {
       throw new AppError('Ride request not found', 404);
     }
 
-    if (request.ride.driverId !== driverId) {
+    const currentStatus = request.status as RideRequestStatusType;
+    if (!isValidTransition(currentStatus, status)) {
+      throw new AppError(
+        `Invalid status transition from ${currentStatus} to ${status}`,
+        400
+      );
+    }
+
+    if (status === 'CANCELLED') {
+      if (request.passengerId !== userId) {
+        throw new AppError('Only the passenger can cancel this request', 403);
+      }
+      if (request.status !== 'PENDING') {
+        throw new AppError('Only pending requests can be cancelled', 400);
+      }
+      return prisma.rideRequest.update({
+        where: { id: requestId },
+        data: { status: 'CANCELLED' },
+      });
+    }
+
+    if (request.ride.driverId !== userId) {
       throw new AppError('Only the driver can update this request', 403);
     }
 
@@ -157,6 +197,70 @@ export class RideRequestService {
 
       return updatedRequest;
     }
+  }
+
+  async getRequestById(requestId: string, userId: string): Promise<RideRequest> {
+    if (!UUID_REGEX.test(requestId)) {
+      throw new AppError('Invalid request ID format', 400);
+    }
+
+    const request = await prisma.rideRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        ride: {
+          include: {
+            driver: { select: { id: true, name: true, photoUrl: true } },
+          },
+        },
+        passenger: { select: { id: true, name: true, photoUrl: true } },
+      },
+    });
+
+    if (!request) {
+      throw new AppError('Ride request not found', 404);
+    }
+
+    if (request.passengerId !== userId && request.ride.driverId !== userId) {
+      throw new AppError('You are not authorized to view this request', 403);
+    }
+
+    return request;
+  }
+
+  async getPassengerRequests(passengerId: string): Promise<RideRequest[]> {
+    return prisma.rideRequest.findMany({
+      where: { passengerId },
+      include: {
+        ride: {
+          include: {
+            driver: { select: { id: true, name: true, photoUrl: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getRideRequests(driverId: string, rideId: string): Promise<RideRequest[]> {
+    if (!UUID_REGEX.test(rideId)) {
+      throw new AppError('Invalid ride ID format', 400);
+    }
+
+    const ride = await prisma.ride.findUnique({
+      where: { id: rideId },
+    });
+
+    if (!ride || ride.driverId !== driverId) {
+      throw new AppError('You are not authorized to view requests for this ride', 403);
+    }
+
+    return prisma.rideRequest.findMany({
+      where: { rideId },
+      include: {
+        passenger: { select: { id: true, name: true, photoUrl: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
   }
 }
 

@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/app-error';
 import { haversine } from '../lib/haversine';
+import { getDistanceAndDuration } from '../lib/google-maps';
 import type { CreateRideInput } from '../schemas/ride.schema';
 import type { Ride } from '@prisma/client';
 
@@ -26,6 +27,16 @@ interface RideWithDriver {
     name: string;
     photoUrl: string | null;
   };
+  requests?: Array<{
+    id: string;
+    passengerId: string;
+    status: string;
+    requestedSeats: number;
+    passenger: {
+      id: string;
+      name: string;
+    };
+  }>;
 }
 
 interface MapRideResponse {
@@ -49,6 +60,43 @@ export class RideService {
     driverId: string,
     data: CreateRideInput
   ): Promise<RideWithDriver> {
+    const activeRide = await prisma.ride.findFirst({
+      where: {
+        driverId,
+        status: 'ACTIVE'
+      }
+    });
+
+    if (activeRide) {
+      throw new AppError('Driver already has an active ride', 400);
+    }
+
+    let distanceKm = data.distanceKm ?? 0;
+    const costPerKm = data.costPerKm ?? parseFloat(process.env.COST_PER_KM ?? '1.5');
+
+    if (data.originLat && data.originLng && data.destinationLat && data.destinationLng) {
+      try {
+        const { distanceKm: googleDistance } = await getDistanceAndDuration(
+          data.originLat,
+          data.originLng,
+          data.destinationLat,
+          data.destinationLng
+        );
+        distanceKm = googleDistance;
+      } catch (error) {
+        console.warn('Google Maps API failed, using Haversine fallback:', error);
+        distanceKm = haversine(
+          data.originLat,
+          data.originLng,
+          data.destinationLat,
+          data.destinationLng
+        );
+      }
+    }
+
+    const estimatedTotalCost = distanceKm * costPerKm;
+    const costPerSeat = estimatedTotalCost / data.totalSeats;
+
     const ride = await prisma.ride.create({
       data: {
         driverId,
@@ -61,10 +109,10 @@ export class RideService {
         destinationLng: data.destinationLng,
         totalSeats: data.totalSeats,
         availableSeats: data.totalSeats,
-        costPerKm: data.costPerKm ?? 0,
-        distanceKm: data.distanceKm ?? 0,
-        estimatedTotalCost: data.estimatedTotalCost ?? 0,
-        costPerSeat: data.costPerSeat ?? 0,
+        costPerKm,
+        distanceKm,
+        estimatedTotalCost,
+        costPerSeat,
         status: 'ACTIVE'
       },
       include: {
@@ -160,6 +208,44 @@ export class RideService {
     return ridesWithDistance;
   }
 
+  async getDriverRides(driverId: string) {
+    const rides = await prisma.ride.findMany({
+      where: {
+        driverId,
+        status: 'ACTIVE',
+        departureTime: { gte: new Date() },
+      },
+      orderBy: { departureTime: 'asc' },
+      include: {
+        requests: {
+          where: { status: 'PENDING' },
+          orderBy: { createdAt: 'asc' },
+          include: {
+            passenger: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    return rides.map((r) => ({
+      id: r.id,
+      originAddress: r.originAddress,
+      destinationAddress: r.destinationAddress,
+      departureTime: r.departureTime,
+      availableSeats: r.availableSeats,
+      totalSeats: r.totalSeats,
+      pendingRequests: r.requests.map((req) => ({
+        id: req.id,
+        requestedSeats: req.requestedSeats,
+        pickupLocation: req.pickupLocation,
+        dropoffLocation: req.dropoffLocation,
+        estimatedCost: Number(req.estimatedCost),
+        createdAt: req.createdAt,
+        passenger: req.passenger,
+      })),
+    }));
+  }
+
   async getRideById(rideId: string): Promise<RideWithDriver> {
     const ride = await prisma.ride.findUnique({
       where: { id: rideId },
@@ -169,6 +255,16 @@ export class RideService {
             id: true,
             name: true,
             photoUrl: true
+          }
+        },
+        requests: {
+          where: {
+            status: { notIn: ['REJECTED', 'CANCELLED'] }
+          },
+          include: {
+            passenger: {
+              select: { id: true, name: true }
+            }
           }
         }
       }
@@ -203,7 +299,14 @@ export class RideService {
       costPerSeat: Number(ride.costPerSeat),
       status: ride.status,
       createdAt: ride.createdAt,
-      driver: ride.driver
+      driver: ride.driver,
+      requests: ride.requests.map((r) => ({
+        id: r.id,
+        passengerId: r.passengerId,
+        status: r.status,
+        requestedSeats: r.requestedSeats,
+        passenger: r.passenger
+      }))
     };
   }
 
