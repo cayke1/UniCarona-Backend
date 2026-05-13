@@ -4,7 +4,7 @@ import { requireRole } from '../middlewares/role.middleware';
 import { validateData } from '../middlewares/validate.middleware';
 import { rideController } from '../controllers/ride.controller';
 import { rideRequestController } from '../controllers/ride-request.controller';
-import { createRideSchema } from '../schemas/ride.schema';
+import { createRideSchema, updateRideSchema } from '../schemas/ride.schema';
 import { createRideRequestSchema } from '../schemas/ride-request.schema';
 
 const rideRoutes = Router();
@@ -39,7 +39,16 @@ rideRoutes.get(
 rideRoutes.delete(
   '/:id',
   authMiddleware,
+  requireRole('DRIVER'),
   rideController.cancelRide
+);
+
+rideRoutes.patch(
+  '/:id',
+  authMiddleware,
+  requireRole('DRIVER'),
+  validateData(updateRideSchema),
+  rideController.updateRide
 );
 
 rideRoutes.post(

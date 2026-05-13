@@ -2,7 +2,7 @@ import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/app-error';
 import { haversine } from '../lib/haversine';
 import { getDistanceAndDuration } from '../lib/google-maps';
-import type { CreateRideInput } from '../schemas/ride.schema';
+import type { CreateRideInput, UpdateRideInput } from '../schemas/ride.schema';
 import type { Ride } from '@prisma/client';
 
 interface RideWithDriver {
@@ -21,6 +21,7 @@ interface RideWithDriver {
   estimatedTotalCost: number;
   costPerSeat: number;
   status: string;
+  acceptingRequests: boolean;
   createdAt: Date;
   driver: {
     id: string;
@@ -142,6 +143,7 @@ export class RideService {
       estimatedTotalCost: Number(ride.estimatedTotalCost),
       costPerSeat: Number(ride.costPerSeat),
       status: ride.status,
+      acceptingRequests: ride.acceptingRequests,
       createdAt: ride.createdAt,
       driver: ride.driver
     };
@@ -156,10 +158,10 @@ export class RideService {
 
     const rides = await prisma.ride.findMany({
       where: {
-        status: 'ACTIVE',
         departureTime: {
           gte: now
         },
+        acceptingRequests: true,
         driverId: {
           not: userId
         }
@@ -234,6 +236,7 @@ export class RideService {
       departureTime: r.departureTime,
       availableSeats: r.availableSeats,
       totalSeats: r.totalSeats,
+      acceptingRequests: r.acceptingRequests,
       pendingRequests: r.requests.map((req) => ({
         id: req.id,
         requestedSeats: req.requestedSeats,
@@ -298,6 +301,7 @@ export class RideService {
       estimatedTotalCost: Number(ride.estimatedTotalCost),
       costPerSeat: Number(ride.costPerSeat),
       status: ride.status,
+      acceptingRequests: ride.acceptingRequests,
       createdAt: ride.createdAt,
       driver: ride.driver,
       requests: ride.requests.map((r) => ({
@@ -353,5 +357,78 @@ export class RideService {
     }
 
     return cancelledRide;
+  }
+
+  async updateRide(
+    rideId: string,
+    userId: string,
+    data: UpdateRideInput
+  ): Promise<RideWithDriver> {
+    const ride = await prisma.ride.findUnique({
+      where: { id: rideId },
+      include: {
+        driver: {
+          select: {
+            id: true,
+            name: true,
+            photoUrl: true
+          }
+        }
+      }
+    });
+
+    if (!ride) {
+      throw new AppError('Ride not found', 404);
+    }
+
+    if (ride.driverId !== userId) {
+      throw new AppError('Only the driver can update this ride', 403);
+    }
+
+    if (ride.status !== 'ACTIVE') {
+      throw new AppError('Only active rides can be updated', 400);
+    }
+
+    if (ride.departureTime < new Date()) {
+      throw new AppError('Cannot update a ride that has already departed', 400);
+    }
+
+    const updatedRide = await prisma.ride.update({
+      where: { id: rideId },
+      data: {
+        acceptingRequests: data.acceptingRequests,
+        status: data.status as any
+      },
+      include: {
+        driver: {
+          select: {
+            id: true,
+            name: true,
+            photoUrl: true
+          }
+        }
+      }
+    });
+
+    return {
+      id: updatedRide.id,
+      departureTime: updatedRide.departureTime,
+      originAddress: updatedRide.originAddress,
+      originLat: updatedRide.originLat,
+      originLng: updatedRide.originLng,
+      destinationAddress: updatedRide.destinationAddress,
+      destinationLat: updatedRide.destinationLat,
+      destinationLng: updatedRide.destinationLng,
+      totalSeats: updatedRide.totalSeats,
+      availableSeats: updatedRide.availableSeats,
+      costPerKm: Number(updatedRide.costPerKm),
+      distanceKm: Number(updatedRide.distanceKm),
+      estimatedTotalCost: Number(updatedRide.estimatedTotalCost),
+      costPerSeat: Number(updatedRide.costPerSeat),
+      status: updatedRide.status,
+      acceptingRequests: updatedRide.acceptingRequests,
+      createdAt: updatedRide.createdAt,
+      driver: updatedRide.driver
+    };
   }
 }
