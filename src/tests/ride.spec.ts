@@ -323,4 +323,172 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
       await prisma.user.delete({ where: { email: otherEmail } });
     });
   });
+
+  describe('T-14: PATCH /rides/:id (Atualizar Carona)', () => {
+    beforeEach(async () => {
+      await prisma.ride.deleteMany({ where: { driverId, status: 'ACTIVE' } });
+    });
+
+    it('Deve desativar o recebimento de pedidos com sucesso (200)', async () => {
+      const createResponse = await request(app)
+        .post('/api/rides')
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({
+          departureTime: futureDate,
+          originAddress: 'Origin Update',
+          originLat: -23.6445,
+          originLng: -46.5761,
+          destinationAddress: 'Destination Update',
+          destinationLat: -23.6678,
+          destinationLng: -46.4611,
+          totalSeats: 3
+        });
+
+      const rideId = createResponse.body.id;
+
+      const response = await request(app)
+        .patch(`/api/rides/${rideId}`)
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({ acceptingRequests: false });
+
+      expect(response.status).toBe(200);
+      expect(response.body.acceptingRequests).toBe(false);
+    });
+
+    it('Deve reativar o recebimento de pedidos com sucesso (200)', async () => {
+      const createResponse = await request(app)
+        .post('/api/rides')
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({
+          departureTime: futureDate,
+          originAddress: 'Origin Update',
+          originLat: -23.6445,
+          originLng: -46.5761,
+          destinationAddress: 'Destination Update',
+          destinationLat: -23.6678,
+          destinationLng: -46.4611,
+          totalSeats: 3
+        });
+
+      const rideId = createResponse.body.id;
+
+      // First disable
+      await prisma.ride.update({
+        where: { id: rideId },
+        data: { acceptingRequests: false }
+      });
+
+      const response = await request(app)
+        .patch(`/api/rides/${rideId}`)
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({ acceptingRequests: true });
+
+      expect(response.status).toBe(200);
+      expect(response.body.acceptingRequests).toBe(true);
+    });
+
+    it('Deve retornar 403 se outro motorista tentar atualizar', async () => {
+      const createResponse = await request(app)
+        .post('/api/rides')
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({
+          departureTime: futureDate,
+          originAddress: 'Origin Update',
+          originLat: -23.6445,
+          originLng: -46.5761,
+          destinationAddress: 'Destination Update',
+          destinationLat: -23.6678,
+          destinationLng: -46.4611,
+          totalSeats: 3
+        });
+
+      const rideId = createResponse.body.id;
+
+      const otherEmail = `other_driver_${Date.now()}@example.com`;
+      const passwordHash = await bcrypt.hash('password123', 10);
+      await prisma.user.create({
+        data: {
+          name: 'Other Driver',
+          email: otherEmail,
+          passwordHash,
+          roles: ['DRIVER']
+        }
+      });
+
+      const otherLogin = await request(app)
+        .post('/api/auth/login')
+        .send({ email: otherEmail, password: 'password123' });
+
+      const response = await request(app)
+        .patch(`/api/rides/${rideId}`)
+        .set('Authorization', `Bearer ${otherLogin.body.accessToken}`)
+        .send({ acceptingRequests: false });
+
+      expect(response.status).toBe(403);
+
+      await prisma.refreshToken.deleteMany({ where: { user: { email: otherEmail } } });
+      await prisma.user.delete({ where: { email: otherEmail } });
+    });
+
+    it('Deve retornar 400 ao tentar atualizar carona cancelada', async () => {
+      const createResponse = await request(app)
+        .post('/api/rides')
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({
+          departureTime: futureDate,
+          originAddress: 'Origin Update',
+          originLat: -23.6445,
+          originLng: -46.5761,
+          destinationAddress: 'Destination Update',
+          destinationLat: -23.6678,
+          destinationLng: -46.4611,
+          totalSeats: 3
+        });
+
+      const rideId = createResponse.body.id;
+
+      await prisma.ride.update({
+        where: { id: rideId },
+        data: { status: 'CANCELLED' }
+      });
+
+      const response = await request(app)
+        .patch(`/api/rides/${rideId}`)
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({ acceptingRequests: false });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('Deve retornar 400 ao tentar atualizar carona que já partiu', async () => {
+      const pastDate = new Date(Date.now() - 3600000); // 1 hour ago
+      const createResponse = await request(app)
+        .post('/api/rides')
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({
+          departureTime: futureDate,
+          originAddress: 'Origin Update',
+          originLat: -23.6445,
+          originLng: -46.5761,
+          destinationAddress: 'Destination Update',
+          destinationLat: -23.6678,
+          destinationLng: -46.4611,
+          totalSeats: 3
+        });
+
+      const rideId = createResponse.body.id;
+
+      await prisma.ride.update({
+        where: { id: rideId },
+        data: { departureTime: pastDate }
+      });
+
+      const response = await request(app)
+        .patch(`/api/rides/${rideId}`)
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({ acceptingRequests: false });
+
+      expect(response.status).toBe(400);
+    });
+  });
 });
