@@ -35,8 +35,8 @@ export class RideRequestService {
       throw new AppError('Ride not found', 404);
     }
 
-    if (ride.status !== 'ACTIVE') {
-      throw new AppError('Ride is not active', 400);
+    if (ride.status !== 'ACTIVE' || !ride.acceptingRequests) {
+      throw new AppError('Ride is not active or not accepting new requests', 400);
     }
 
     if (ride.driverId === passengerId) {
