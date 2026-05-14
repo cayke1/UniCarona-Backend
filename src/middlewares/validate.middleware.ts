@@ -18,6 +18,7 @@ export const validateData = (schema: z.ZodSchema) => {
       });
     }
 
+    req.body = result.data;
     return next();
   };
 };
