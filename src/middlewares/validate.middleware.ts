@@ -36,6 +36,7 @@ export const validateQuery = (schema: z.ZodSchema) => {
       });
     }
 
+    req.body = result.data;
     return next();
   };
 };
