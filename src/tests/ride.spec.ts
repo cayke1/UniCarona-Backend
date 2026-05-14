@@ -2,6 +2,7 @@ import request from 'supertest';
 import { app } from '../app';
 import { PrismaClient, UserRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { getDistanceAndDuration } from '../lib/google-maps';
 
 jest.mock('resend', () => {
   return {
@@ -197,6 +198,68 @@ describe('Testes de Rides (T-06, T-07, T-08, T-11)', () => {
         });
 
       expect(response.status).toBe(400);
+    });
+
+    it('S4-T7: Deve usar fallback Haversine quando Google Maps falhar', async () => {
+      (getDistanceAndDuration as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
+
+      const response = await request(app)
+        .post('/api/rides')
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({
+          departureTime: futureDate,
+          originAddress: 'Univ Federal do ABC',
+          originLat: -23.6445,
+          originLng: -46.5761,
+          destinationAddress: 'Terminal Santo André',
+          destinationLat: -23.6678,
+          destinationLng: -46.4611,
+          totalSeats: 3
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body.distanceKm).toBeGreaterThan(0);
+      expect(response.body.estimatedTotalCost).toBeGreaterThan(0);
+      expect(response.body.costPerSeat).toBeGreaterThan(0);
+    });
+
+    it('S4-T7: Deve retornar 400 se coordenadas não forem fornecidas', async () => {
+      const response = await request(app)
+        .post('/api/rides')
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({
+          departureTime: futureDate,
+          originAddress: 'Univ Federal do ABC',
+          destinationAddress: 'Terminal Santo André',
+          totalSeats: 3
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe(true);
+    });
+
+    it('S4-T7: Deve retornar 400 se distância calculada for zero', async () => {
+      (getDistanceAndDuration as jest.Mock).mockResolvedValueOnce({
+        distanceKm: 0,
+        durationMinutes: 0
+      });
+
+      const response = await request(app)
+        .post('/api/rides')
+        .set('Authorization', `Bearer ${driverToken}`)
+        .send({
+          departureTime: futureDate,
+          originAddress: 'Univ Federal do ABC',
+          originLat: -23.6445,
+          originLng: -46.5761,
+          destinationAddress: 'Terminal Santo André',
+          destinationLat: -23.6678,
+          destinationLng: -46.4611,
+          totalSeats: 3
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('distance');
     });
   });
 

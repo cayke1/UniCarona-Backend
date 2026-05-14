@@ -72,31 +72,50 @@ export class RideService {
       throw new AppError('Driver already has an active ride', 400);
     }
 
-    let distanceKm = data.distanceKm ?? 0;
     const costPerKm = data.costPerKm ?? parseFloat(process.env.COST_PER_KM ?? '1.5');
 
-    if (data.originLat && data.originLng && data.destinationLat && data.destinationLng) {
+    if (
+      data.originLat === undefined ||
+      data.originLng === undefined ||
+      data.destinationLat === undefined ||
+      data.destinationLng === undefined
+    ) {
+      throw new AppError('Origin and destination coordinates are required', 400);
+    }
+
+    let distanceKm: number;
+    try {
+      const { distanceKm: googleDistance } = await getDistanceAndDuration(
+        data.originLat,
+        data.originLng,
+        data.destinationLat,
+        data.destinationLng
+      );
+      distanceKm = googleDistance;
+    } catch (error) {
+      console.warn('Google Maps API failed, using Haversine fallback:', error);
       try {
-        const { distanceKm: googleDistance } = await getDistanceAndDuration(
-          data.originLat,
-          data.originLng,
-          data.destinationLat,
-          data.destinationLng
-        );
-        distanceKm = googleDistance;
-      } catch (error) {
-        console.warn('Google Maps API failed, using Haversine fallback:', error);
         distanceKm = haversine(
           data.originLat,
           data.originLng,
           data.destinationLat,
           data.destinationLng
         );
+      } catch {
+        throw new AppError('Failed to calculate distance between coordinates', 400);
       }
+    }
+
+    if (!distanceKm || distanceKm <= 0) {
+      throw new AppError('Calculated distance must be greater than zero', 400);
     }
 
     const estimatedTotalCost = distanceKm * costPerKm;
     const costPerSeat = estimatedTotalCost / data.totalSeats;
+
+    if (costPerSeat <= 0) {
+      throw new AppError('Invalid pricing: cost per seat must be greater than zero', 400);
+    }
 
     const ride = await prisma.ride.create({
       data: {
@@ -158,6 +177,7 @@ export class RideService {
 
     const rides = await prisma.ride.findMany({
       where: {
+        status: 'ACTIVE',
         departureTime: {
           gte: now
         },
@@ -249,7 +269,7 @@ export class RideService {
     }));
   }
 
-  async getRideById(rideId: string): Promise<RideWithDriver> {
+  async getRideById(rideId: string, userId?: string): Promise<RideWithDriver> {
     const ride = await prisma.ride.findUnique({
       where: { id: rideId },
       include: {
@@ -277,12 +297,16 @@ export class RideService {
       throw new AppError('Ride not found', 404);
     }
 
-    if (ride.status !== 'ACTIVE') {
-      throw new AppError('Ride is not active', 404);
-    }
+    const isOwner = userId === ride.driverId;
 
-    if (ride.departureTime < new Date()) {
-      throw new AppError('Ride has already departed', 404);
+    if (!isOwner) {
+      if (ride.status !== 'ACTIVE') {
+        throw new AppError('Ride is not active', 404);
+      }
+
+      if (ride.departureTime < new Date()) {
+        throw new AppError('Ride has already departed', 404);
+      }
     }
 
     return {
@@ -334,13 +358,17 @@ export class RideService {
     await prisma.$transaction(async (tx) => {
       await tx.ride.update({
         where: { id: rideId },
-        data: { status: 'CANCELLED' }
+        data: {
+          status: 'CANCELLED',
+          acceptingRequests: false,
+          availableSeats: 0
+        }
       });
 
       await tx.rideRequest.updateMany({
         where: {
           rideId,
-          status: 'ACCEPTED'
+          status: { in: ['PENDING', 'ACCEPTED', 'AWAITING_PAYMENT'] }
         },
         data: {
           status: 'CANCELLED'
