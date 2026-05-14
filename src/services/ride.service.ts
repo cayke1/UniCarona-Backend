@@ -3,7 +3,7 @@ import { AppError } from '../lib/app-error';
 import { haversine } from '../lib/haversine';
 import { getDistanceAndDuration } from '../lib/google-maps';
 import type { CreateRideInput, UpdateRideInput } from '../schemas/ride.schema';
-import type { Ride } from '@prisma/client';
+import type { Ride, RideStatus } from '@prisma/client';
 
 interface RideWithDriver {
   id: string;
@@ -397,7 +397,7 @@ export class RideService {
       where: { id: rideId },
       data: {
         acceptingRequests: data.acceptingRequests,
-        status: data.status as any
+        status: data.status as RideStatus
       },
       include: {
         driver: {
