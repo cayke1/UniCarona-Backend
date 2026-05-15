@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/app-error';
 import { notificationService } from './notification.service';
+import { ridePollService } from './ride-poll.service';
 import type { RideRequest, Transaction } from '@prisma/client';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -110,6 +111,8 @@ export class PaymentService {
         `Your payment of R$ ${Number(request.totalCharged).toFixed(2)} has been confirmed.`
       )
     ]);
+
+    ridePollService.notifyRideUpdated(request.rideId);
 
     return {
       success: true,

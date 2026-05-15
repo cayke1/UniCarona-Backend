@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/app-error';
 import { haversine } from '../lib/haversine';
 import { getDistanceAndDuration } from '../lib/google-maps';
+import { ridePollService } from './ride-poll.service';
 import type { CreateRideInput } from '../schemas/ride.schema';
 import type { Ride } from '@prisma/client';
 
@@ -352,6 +353,7 @@ export class RideService {
       throw new AppError('Ride not found after cancellation', 404);
     }
 
+    ridePollService.notifyRideUpdated(rideId);
     return cancelledRide;
   }
 }
