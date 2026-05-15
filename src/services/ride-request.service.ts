@@ -51,6 +51,10 @@ export class RideRequestService {
       throw new AppError('Ride has already departed', 400);
     }
 
+    if (Number(ride.costPerSeat) <= 0) {
+      throw new AppError('Ride pricing is invalid', 400);
+    }
+
     const existingRequest = await prisma.rideRequest.findFirst({
       where: {
         rideId,

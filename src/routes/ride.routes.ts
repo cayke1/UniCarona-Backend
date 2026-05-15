@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middlewares/auth.middleware';
 import { requireRole } from '../middlewares/role.middleware';
-import { validateData } from '../middlewares/validate.middleware';
+import { validateData, validateQuery } from '../middlewares/validate.middleware';
 import { rideController } from '../controllers/ride.controller';
 import { rideRequestController } from '../controllers/ride-request.controller';
 import { createRideSchema, updateRideSchema } from '../schemas/ride.schema';
+import { listRidesQuerySchema } from '../schemas/ride.query.schema';
 import { createRideRequestSchema } from '../schemas/ride-request.schema';
 
 const rideRoutes = Router();
@@ -20,6 +21,7 @@ rideRoutes.post(
 rideRoutes.get(
   '/',
   authMiddleware,
+  validateQuery(listRidesQuerySchema),
   rideController.listRides
 );
 

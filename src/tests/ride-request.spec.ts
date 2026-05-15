@@ -262,6 +262,30 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
       );
     });
 
+    it('S4-T7: Deve retornar 400 se a carona tiver pricing inválido', async () => {
+      await prisma.ride.update({
+        where: { id: rideId },
+        data: { costPerSeat: 0 }
+      });
+
+      const response = await request(app)
+        .post(`/api/rides/${rideId}/requests`)
+        .set('Authorization', `Bearer ${passengerToken}`)
+        .send({
+          pickupLocation: 'Ponto A',
+          dropoffLocation: 'Ponto B',
+          requestedSeats: 1
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toMatch(/pricing/i);
+
+      await prisma.ride.update({
+        where: { id: rideId },
+        data: { costPerSeat: 6.225 }
+      });
+    });
+
     it('Deve retornar 400 se não houver assentos suficientes', async () => {
       const p2Email = `p2_${Date.now()}@example.com`;
       await prisma.user.create({

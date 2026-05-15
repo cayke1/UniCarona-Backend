@@ -70,12 +70,13 @@ export class RideController {
   ): Promise<void> {
     try {
       const id = req.params.id as string;
+      const userId = req.user?.sub || '';
 
       if (!UUID_REGEX.test(id)) {
         throw new AppError('Invalid ride ID format', 400);
       }
 
-      const ride = await rideService.getRideById(id);
+      const ride = await rideService.getRideById(id, userId);
 
       res.status(200).json(ride);
     } catch (error) {
