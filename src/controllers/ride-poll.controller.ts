@@ -57,8 +57,12 @@ export async function pollRideUpdates(
   try {
     const ride = await rideService.getRideById(id as string);
     res.status(200).json(ride);
-  } catch {
-    // ride was cancelled or departed while polling — signal the client to refresh
-    res.status(200).json({ id, status: 'CANCELLED' });
+  } catch (error) {
+    if (error instanceof AppError && error.statusCode === 404) {
+      // ride no longer active — signal the client to refresh
+      res.status(200).json({ id, status: 'CANCELLED' });
+      return;
+    }
+    next(error);
   }
 }

@@ -337,7 +337,7 @@ export class RideService {
       await tx.rideRequest.updateMany({
         where: {
           rideId,
-          status: 'ACCEPTED'
+          status: { in: ['PENDING', 'ACCEPTED', 'AWAITING_PAYMENT'] }
         },
         data: {
           status: 'CANCELLED'
