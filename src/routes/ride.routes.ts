@@ -4,6 +4,7 @@ import { requireRole } from '../middlewares/role.middleware';
 import { validateData, validateQuery } from '../middlewares/validate.middleware';
 import { rideController } from '../controllers/ride.controller';
 import { rideRequestController } from '../controllers/ride-request.controller';
+import { pollRideUpdates } from '../controllers/ride-poll.controller';
 import { createRideSchema, updateRideSchema } from '../schemas/ride.schema';
 import { listRidesQuerySchema } from '../schemas/ride.query.schema';
 import { createRideRequestSchema } from '../schemas/ride-request.schema';
@@ -36,6 +37,12 @@ rideRoutes.get(
   '/:id',
   authMiddleware,
   rideController.getRideById
+);
+
+rideRoutes.get(
+  '/:id/poll',
+  authMiddleware,
+  pollRideUpdates
 );
 
 rideRoutes.delete(

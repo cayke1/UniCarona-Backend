@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/app-error';
 import { notificationService } from './notification.service';
+import { ridePollService } from './ride-poll.service';
 import type { CreateRideRequestInput } from '../schemas/ride-request.schema';
 import type { RideRequest } from '@prisma/client';
 
@@ -95,6 +96,7 @@ export class RideRequestService {
       `A passenger has requested ${data.requestedSeats} seats for your ride from ${data.pickupLocation} to ${data.dropoffLocation}.`
     );
 
+    ridePollService.notifyRideUpdated(rideId);
     return request;
   }
 
@@ -130,10 +132,12 @@ export class RideRequestService {
       if (request.status !== 'PENDING') {
         throw new AppError('Only pending requests can be cancelled', 400);
       }
-      return prisma.rideRequest.update({
+      const cancelled = await prisma.rideRequest.update({
         where: { id: requestId },
         data: { status: 'CANCELLED' },
       });
+      ridePollService.notifyRideUpdated(request.rideId);
+      return cancelled;
     }
 
     if (request.ride.driverId !== userId) {
@@ -184,6 +188,7 @@ export class RideRequestService {
         'Your ride request has been accepted. Please proceed with payment.'
       );
 
+      ridePollService.notifyRideUpdated(request.rideId);
       return updatedRequest;
     } else {
       const updatedRequest = await prisma.rideRequest.update({
@@ -199,6 +204,7 @@ export class RideRequestService {
         'Unfortunately, your ride request has been rejected by the driver.'
       );
 
+      ridePollService.notifyRideUpdated(request.rideId);
       return updatedRequest;
     }
   }
