@@ -29,14 +29,26 @@ rideRoutes.get(
 rideRoutes.get(
   '/me',
   authMiddleware,
-  requireRole('DRIVER'),
   rideController.getMyRides
+);
+
+rideRoutes.get(
+  '/me/history',
+  authMiddleware,
+  rideController.getMyRidesHistory
 );
 
 rideRoutes.get(
   '/:id',
   authMiddleware,
   rideController.getRideById
+);
+
+rideRoutes.post(
+  '/:id/complete',
+  authMiddleware,
+  requireRole('DRIVER'),
+  rideController.completeRide
 );
 
 rideRoutes.get(
