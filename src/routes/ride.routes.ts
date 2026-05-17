@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middlewares/auth.middleware';
 import { requireRole } from '../middlewares/role.middleware';
-import { validateData } from '../middlewares/validate.middleware';
+import { validateData, validateQuery } from '../middlewares/validate.middleware';
 import { rideController } from '../controllers/ride.controller';
 import { rideRequestController } from '../controllers/ride-request.controller';
 import { pollRideUpdates } from '../controllers/ride-poll.controller';
@@ -21,6 +21,7 @@ rideRoutes.post(
 rideRoutes.get(
   '/',
   authMiddleware,
+  validateQuery(listRidesQuerySchema),
   rideController.listRides
 );
 
@@ -46,7 +47,16 @@ rideRoutes.get(
 rideRoutes.delete(
   '/:id',
   authMiddleware,
+  requireRole('DRIVER'),
   rideController.cancelRide
+);
+
+rideRoutes.patch(
+  '/:id',
+  authMiddleware,
+  requireRole('DRIVER'),
+  validateData(updateRideSchema),
+  rideController.updateRide
 );
 
 rideRoutes.post(

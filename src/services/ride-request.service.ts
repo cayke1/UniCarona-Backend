@@ -36,8 +36,8 @@ export class RideRequestService {
       throw new AppError('Ride not found', 404);
     }
 
-    if (ride.status !== 'ACTIVE') {
-      throw new AppError('Ride is not active', 400);
+    if (ride.status !== 'ACTIVE' || !ride.acceptingRequests) {
+      throw new AppError('Ride is not active or not accepting new requests', 400);
     }
 
     if (ride.driverId === passengerId) {
@@ -50,6 +50,10 @@ export class RideRequestService {
 
     if (ride.departureTime < new Date()) {
       throw new AppError('Ride has already departed', 400);
+    }
+
+    if (Number(ride.costPerSeat) <= 0) {
+      throw new AppError('Ride pricing is invalid', 400);
     }
 
     const existingRequest = await prisma.rideRequest.findFirst({
