@@ -11,8 +11,8 @@ type RideRequestStatusType = 'PENDING' | 'ACCEPTED' | 'AWAITING_PAYMENT' | 'PAID
 
 const VALID_TRANSITIONS: Record<RideRequestStatusType, RideRequestStatusType[]> = {
   PENDING: ['ACCEPTED', 'REJECTED', 'CANCELLED'],
-  ACCEPTED: ['AWAITING_PAYMENT', 'CANCELLED'],
-  AWAITING_PAYMENT: ['PAID', 'CANCELLED'],
+  ACCEPTED: [],
+  AWAITING_PAYMENT: [],
   PAID: [],
   REJECTED: [],
   CANCELLED: [],
@@ -142,10 +142,6 @@ export class RideRequestService {
 
     if (request.ride.driverId !== userId) {
       throw new AppError('Only the driver can update this request', 403);
-    }
-
-    if (request.status !== 'PENDING') {
-      throw new AppError('This request has already been processed', 400);
     }
 
     if (request.ride.departureTime < new Date()) {
