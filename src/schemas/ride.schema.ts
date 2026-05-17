@@ -64,6 +64,7 @@ export type CreateRideInput = z.infer<typeof createRideSchema>;
 
 export const updateRideSchema = z.object({
   acceptingRequests: z.boolean().optional(),
+  bookingOpen: z.boolean().optional(),
   status: z.enum(['ACTIVE', 'CANCELLED', 'COMPLETED']).optional(),
 });
 
