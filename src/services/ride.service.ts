@@ -446,10 +446,12 @@ export class RideService {
       throw new AppError('Cannot update a ride that has already departed', 400);
     }
 
+    const acceptingRequestsValue = data.acceptingRequests ?? data.bookingOpen;
+
     const updatedRide = await prisma.ride.update({
       where: { id: rideId },
       data: {
-        ...(data.acceptingRequests !== undefined && { acceptingRequests: data.acceptingRequests }),
+        ...(acceptingRequestsValue !== undefined && { acceptingRequests: acceptingRequestsValue }),
         ...(data.status !== undefined && { status: data.status as RideStatus }),
       },
       include: {
