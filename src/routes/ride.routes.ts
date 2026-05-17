@@ -5,7 +5,8 @@ import { validateData, validateQuery } from '../middlewares/validate.middleware'
 import { rideController } from '../controllers/ride.controller';
 import { rideRequestController } from '../controllers/ride-request.controller';
 import { pollRideUpdates } from '../controllers/ride-poll.controller';
-import { createRideSchema } from '../schemas/ride.schema';
+import { createRideSchema, updateRideSchema } from '../schemas/ride.schema';
+import { listRidesQuerySchema } from '../schemas/ride.query.schema';
 import { createRideRequestSchema } from '../schemas/ride-request.schema';
 
 const rideRoutes = Router();
