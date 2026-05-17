@@ -238,7 +238,6 @@ export class RideService {
       where: {
         driverId,
         status: 'ACTIVE',
-        departureTime: { gte: new Date() },
       },
       orderBy: { departureTime: 'asc' },
       include: {
@@ -269,6 +268,28 @@ export class RideService {
         createdAt: req.createdAt,
         passenger: req.passenger,
       })),
+    }));
+  }
+
+  async getDriverRideHistory(driverId: string) {
+    const rides = await prisma.ride.findMany({
+      where: { driverId, status: 'COMPLETED' },
+      orderBy: { departureTime: 'desc' },
+      include: {
+        requests: {
+          where: { status: 'PAID' },
+          select: { id: true },
+        },
+      },
+    });
+
+    return rides.map((r) => ({
+      id: r.id,
+      originAddress: r.originAddress,
+      destinationAddress: r.destinationAddress,
+      departureTime: r.departureTime,
+      totalSeats: r.totalSeats,
+      paidPassengers: r.requests.length,
     }));
   }
 
@@ -428,8 +449,8 @@ export class RideService {
     const updatedRide = await prisma.ride.update({
       where: { id: rideId },
       data: {
-        acceptingRequests: data.acceptingRequests,
-        status: data.status as RideStatus
+        ...(data.acceptingRequests !== undefined && { acceptingRequests: data.acceptingRequests }),
+        ...(data.status !== undefined && { status: data.status as RideStatus }),
       },
       include: {
         driver: {
@@ -462,5 +483,21 @@ export class RideService {
       createdAt: updatedRide.createdAt,
       driver: updatedRide.driver
     };
+  }
+
+  async completeRide(rideId: string, userId: string): Promise<void> {
+    const ride = await prisma.ride.findUnique({ where: { id: rideId } });
+
+    if (!ride) throw new AppError('Ride not found', 404);
+    if (ride.driverId !== userId) throw new AppError('Only the driver can complete this ride', 403);
+    if (ride.status !== 'ACTIVE') throw new AppError('Only active rides can be completed', 400);
+    if (ride.departureTime > new Date()) throw new AppError('Cannot complete a ride before its departure time', 400);
+
+    await prisma.ride.update({
+      where: { id: rideId },
+      data: { status: 'COMPLETED' },
+    });
+
+    ridePollService.notifyRideUpdated(rideId);
   }
 }

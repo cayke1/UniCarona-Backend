@@ -46,6 +46,21 @@ export class RideController {
     }
   }
 
+  async getMyRidesHistory(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) throw new AppError('Unauthorized: Token context missing', 401);
+      const rides = await rideService.getDriverRideHistory(userId);
+      res.status(200).json(rides);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async listRides(
     req: Request,
     res: Response,
@@ -104,6 +119,25 @@ export class RideController {
       const ride = await rideService.cancelRide(id, userId);
 
       res.status(200).json(ride);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async completeRide(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const id = req.params.id as string;
+      const userId = req.user?.sub;
+
+      if (!UUID_REGEX.test(id)) throw new AppError('Invalid ride ID format', 400);
+      if (!userId) throw new AppError('Unauthorized: Token context missing', 401);
+
+      await rideService.completeRide(id, userId);
+      res.status(200).json({ message: 'Ride completed successfully' });
     } catch (error) {
       next(error);
     }

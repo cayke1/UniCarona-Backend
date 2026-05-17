@@ -11,6 +11,7 @@ export class UserService {
         ride: {
           select: {
             id: true,
+            status: true,
             originAddress: true,
             destinationAddress: true,
             departureTime: true,
@@ -29,6 +30,7 @@ export class UserService {
       createdAt: r.createdAt,
       ride: {
         id: r.ride.id,
+        status: r.ride.status,
         originAddress: r.ride.originAddress,
         destinationAddress: r.ride.destinationAddress,
         departureTime: r.ride.departureTime,
