@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { RideService } from '../services/ride.service';
 import { AppError } from '../lib/app-error';
-import type { CreateRideInput } from '../schemas/ride.schema';
+import type { CreateRideInput, UpdateRideInput } from '../schemas/ride.schema';
 import type { ListRidesQuery } from '../schemas/ride.query.schema';
 
 const UUID_REGEX =
@@ -46,6 +46,21 @@ export class RideController {
     }
   }
 
+  async getMyRidesHistory(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) throw new AppError('Unauthorized: Token context missing', 401);
+      const rides = await rideService.getDriverRideHistory(userId);
+      res.status(200).json(rides);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async listRides(
     req: Request,
     res: Response,
@@ -70,12 +85,13 @@ export class RideController {
   ): Promise<void> {
     try {
       const id = req.params.id as string;
+      const userId = req.user?.sub || '';
 
       if (!UUID_REGEX.test(id)) {
         throw new AppError('Invalid ride ID format', 400);
       }
 
-      const ride = await rideService.getRideById(id);
+      const ride = await rideService.getRideById(id, userId);
 
       res.status(200).json(ride);
     } catch (error) {
@@ -101,6 +117,51 @@ export class RideController {
       }
 
       const ride = await rideService.cancelRide(id, userId);
+
+      res.status(200).json(ride);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async completeRide(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const id = req.params.id as string;
+      const userId = req.user?.sub;
+
+      if (!UUID_REGEX.test(id)) throw new AppError('Invalid ride ID format', 400);
+      if (!userId) throw new AppError('Unauthorized: Token context missing', 401);
+
+      await rideService.completeRide(id, userId);
+      res.status(200).json({ message: 'Ride completed successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateRide(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const id = req.params.id as string;
+      const userId = req.user?.sub;
+
+      if (!UUID_REGEX.test(id)) {
+        throw new AppError('Invalid ride ID format', 400);
+      }
+
+      if (!userId) {
+        throw new AppError('Unauthorized: Token context missing', 401);
+      }
+
+      const data = req.body as UpdateRideInput;
+      const ride = await rideService.updateRide(id, userId, data);
 
       res.status(200).json(ride);
     } catch (error) {

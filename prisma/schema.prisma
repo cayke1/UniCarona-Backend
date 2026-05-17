@@ -65,6 +65,7 @@ model Ride {
   estimatedTotalCost Decimal       @db.Decimal(10, 2)
   costPerSeat        Decimal       @db.Decimal(10, 2)
   status             RideStatus    @default(ACTIVE)
+  acceptingRequests  Boolean       @default(true)
   createdAt          DateTime      @default(now())
   requests           RideRequest[]
   driver             User          @relation("DriverRides", fields: [driverId], references: [id])

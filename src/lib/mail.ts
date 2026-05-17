@@ -6,8 +6,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.MAIL_FROM || 'UniCarona <onboarding@dellanne-dev.online>'; // Default Resend test address or from env
 
 export async function sendResetPasswordEmail(email: string, token: string): Promise<void> {
-  const resetLink = `https://UniCarona.com/auth/reset-password?token=${token}`;
-
+  const resetLink = `http://localhost:8081/reset-password?token=${token}`;
+  
   try {
     const { error } = await resend.emails.send({
       from: process.env.MAIL_FROM || FROM_EMAIL,

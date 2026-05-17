@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/app-error';
 import { notificationService } from './notification.service';
+import { ridePollService } from './ride-poll.service';
 import type { CreateRideRequestInput } from '../schemas/ride-request.schema';
 import type { RideRequest } from '@prisma/client';
 
@@ -10,8 +11,8 @@ type RideRequestStatusType = 'PENDING' | 'ACCEPTED' | 'AWAITING_PAYMENT' | 'PAID
 
 const VALID_TRANSITIONS: Record<RideRequestStatusType, RideRequestStatusType[]> = {
   PENDING: ['ACCEPTED', 'REJECTED', 'CANCELLED'],
-  ACCEPTED: ['AWAITING_PAYMENT', 'CANCELLED'],
-  AWAITING_PAYMENT: ['PAID', 'CANCELLED'],
+  ACCEPTED: [],
+  AWAITING_PAYMENT: [],
   PAID: [],
   REJECTED: [],
   CANCELLED: [],
@@ -35,8 +36,8 @@ export class RideRequestService {
       throw new AppError('Ride not found', 404);
     }
 
-    if (ride.status !== 'ACTIVE') {
-      throw new AppError('Ride is not active', 400);
+    if (ride.status !== 'ACTIVE' || !ride.acceptingRequests) {
+      throw new AppError('Ride is not active or not accepting new requests', 400);
     }
 
     if (ride.driverId === passengerId) {
@@ -49,6 +50,10 @@ export class RideRequestService {
 
     if (ride.departureTime < new Date()) {
       throw new AppError('Ride has already departed', 400);
+    }
+
+    if (Number(ride.costPerSeat) <= 0) {
+      throw new AppError('Ride pricing is invalid', 400);
     }
 
     const existingRequest = await prisma.rideRequest.findFirst({
@@ -91,6 +96,7 @@ export class RideRequestService {
       `A passenger has requested ${data.requestedSeats} seats for your ride from ${data.pickupLocation} to ${data.dropoffLocation}.`
     );
 
+    ridePollService.notifyRideUpdated(rideId);
     return request;
   }
 
@@ -126,18 +132,16 @@ export class RideRequestService {
       if (request.status !== 'PENDING') {
         throw new AppError('Only pending requests can be cancelled', 400);
       }
-      return prisma.rideRequest.update({
+      const cancelled = await prisma.rideRequest.update({
         where: { id: requestId },
         data: { status: 'CANCELLED' },
       });
+      ridePollService.notifyRideUpdated(request.rideId);
+      return cancelled;
     }
 
     if (request.ride.driverId !== userId) {
       throw new AppError('Only the driver can update this request', 403);
-    }
-
-    if (request.status !== 'PENDING') {
-      throw new AppError('This request has already been processed', 400);
     }
 
     if (request.ride.departureTime < new Date()) {
@@ -180,6 +184,7 @@ export class RideRequestService {
         'Your ride request has been accepted. Please proceed with payment.'
       );
 
+      ridePollService.notifyRideUpdated(request.rideId);
       return updatedRequest;
     } else {
       const updatedRequest = await prisma.rideRequest.update({
@@ -195,6 +200,7 @@ export class RideRequestService {
         'Unfortunately, your ride request has been rejected by the driver.'
       );
 
+      ridePollService.notifyRideUpdated(request.rideId);
       return updatedRequest;
     }
   }

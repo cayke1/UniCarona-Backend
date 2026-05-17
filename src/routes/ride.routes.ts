@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middlewares/auth.middleware';
 import { requireRole } from '../middlewares/role.middleware';
-import { validateData } from '../middlewares/validate.middleware';
+import { validateData, validateQuery } from '../middlewares/validate.middleware';
 import { rideController } from '../controllers/ride.controller';
 import { rideRequestController } from '../controllers/ride-request.controller';
-import { createRideSchema } from '../schemas/ride.schema';
+import { pollRideUpdates } from '../controllers/ride-poll.controller';
+import { createRideSchema, updateRideSchema } from '../schemas/ride.schema';
+import { listRidesQuerySchema } from '../schemas/ride.query.schema';
 import { createRideRequestSchema } from '../schemas/ride-request.schema';
 
 const rideRoutes = Router();
@@ -20,14 +22,20 @@ rideRoutes.post(
 rideRoutes.get(
   '/',
   authMiddleware,
+  validateQuery(listRidesQuerySchema),
   rideController.listRides
 );
 
 rideRoutes.get(
   '/me',
   authMiddleware,
-  requireRole('DRIVER'),
   rideController.getMyRides
+);
+
+rideRoutes.get(
+  '/me/history',
+  authMiddleware,
+  rideController.getMyRidesHistory
 );
 
 rideRoutes.get(
@@ -36,10 +44,32 @@ rideRoutes.get(
   rideController.getRideById
 );
 
+rideRoutes.post(
+  '/:id/complete',
+  authMiddleware,
+  requireRole('DRIVER'),
+  rideController.completeRide
+);
+
+rideRoutes.get(
+  '/:id/poll',
+  authMiddleware,
+  pollRideUpdates
+);
+
 rideRoutes.delete(
   '/:id',
   authMiddleware,
+  requireRole('DRIVER'),
   rideController.cancelRide
+);
+
+rideRoutes.patch(
+  '/:id',
+  authMiddleware,
+  requireRole('DRIVER'),
+  validateData(updateRideSchema),
+  rideController.updateRide
 );
 
 rideRoutes.post(
