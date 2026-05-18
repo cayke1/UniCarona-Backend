@@ -3,6 +3,8 @@ import { RideService } from '../services/ride.service';
 import { AppError } from '../lib/app-error';
 import type { CreateRideInput, UpdateRideInput } from '../schemas/ride.schema';
 import type { ListRidesQuery } from '../schemas/ride.query.schema';
+import type { RideRouteGeometryInput } from '../schemas/ride-route.schema';
+import { getDrivingRouteGeometry } from '../lib/osrm-routing';
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -73,6 +75,26 @@ export class RideController {
       const rides = await rideService.listActiveRides(userId, lat, lng);
 
       res.status(200).json(rides);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getRouteGeometry(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const { originLat, originLng, destinationLat, destinationLng } =
+        req.body as RideRouteGeometryInput;
+      const geometry = await getDrivingRouteGeometry(
+        originLat,
+        originLng,
+        destinationLat,
+        destinationLng
+      );
+      res.status(200).json(geometry);
     } catch (error) {
       next(error);
     }

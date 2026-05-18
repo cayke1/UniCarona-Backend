@@ -6,6 +6,7 @@ import { rideController } from '../controllers/ride.controller';
 import { rideRequestController } from '../controllers/ride-request.controller';
 import { pollRideUpdates } from '../controllers/ride-poll.controller';
 import { createRideSchema, updateRideSchema } from '../schemas/ride.schema';
+import { rideRouteGeometrySchema } from '../schemas/ride-route.schema';
 import { listRidesQuerySchema } from '../schemas/ride.query.schema';
 import { createRideRequestSchema } from '../schemas/ride-request.schema';
 
@@ -36,6 +37,13 @@ rideRoutes.get(
   '/me/history',
   authMiddleware,
   rideController.getMyRidesHistory
+);
+
+rideRoutes.post(
+  '/route',
+  authMiddleware,
+  validateData(rideRouteGeometrySchema),
+  rideController.getRouteGeometry
 );
 
 rideRoutes.get(
