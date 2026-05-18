@@ -55,7 +55,7 @@ export async function pollRideUpdates(
   }
 
   try {
-    const ride = await rideService.getRideById(id as string);
+    const ride = await rideService.getRideById(id as string, req.user?.sub);
     res.status(200).json(ride);
   } catch (error) {
     if (error instanceof AppError && error.statusCode === 404) {

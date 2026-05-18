@@ -184,7 +184,7 @@ export class RideService {
         departureTime: {
           gte: now
         },
-        acceptingRequests: true,
+        availableSeats: { gt: 0 },
         driverId: {
           not: userId
         }
@@ -254,7 +254,11 @@ export class RideService {
     return rides.map((r) => ({
       id: r.id,
       originAddress: r.originAddress,
+      originLat: r.originLat,
+      originLng: r.originLng,
       destinationAddress: r.destinationAddress,
+      destinationLat: r.destinationLat,
+      destinationLng: r.destinationLng,
       departureTime: r.departureTime,
       availableSeats: r.availableSeats,
       totalSeats: r.totalSeats,
@@ -322,13 +326,23 @@ export class RideService {
     }
 
     const isOwner = userId === ride.driverId;
+    const activeParticipationStatuses = ['PENDING', 'ACCEPTED', 'AWAITING_PAYMENT', 'PAID'] as const;
+    const hasActiveParticipation =
+      !!userId &&
+      ride.requests.some(
+        (r) =>
+          r.passengerId === userId &&
+          activeParticipationStatuses.includes(
+            r.status as (typeof activeParticipationStatuses)[number]
+          )
+      );
 
     if (!isOwner) {
       if (ride.status !== 'ACTIVE') {
         throw new AppError('Ride is not active', 404);
       }
 
-      if (ride.departureTime < new Date()) {
+      if (!hasActiveParticipation && ride.departureTime < new Date()) {
         throw new AppError('Ride has already departed', 404);
       }
     }

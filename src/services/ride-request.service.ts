@@ -144,8 +144,8 @@ export class RideRequestService {
       throw new AppError('Only the driver can update this request', 403);
     }
 
-    if (request.ride.departureTime < new Date()) {
-      throw new AppError('The ride has already departed', 400);
+    if (request.ride.status !== 'ACTIVE') {
+      throw new AppError('Ride is not active', 400);
     }
 
     if (status === 'ACCEPTED') {

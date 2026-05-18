@@ -412,7 +412,7 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
       expect(response.body.message).toMatch(/invalid.*transition/i);
     });
 
-    it('Deve bloquear aceite após departureTime (400)', async () => {
+    it('Deve permitir aceite após departureTime se a carona ainda estiver ACTIVE', async () => {
       await prisma.ride.update({
         where: { id: rideId },
         data: { departureTime: new Date(Date.now() - 60 * 60 * 1000) }
@@ -423,8 +423,8 @@ describe('Testes de Solicitação de Carona (Task 1 & 2)', () => {
         .set('Authorization', `Bearer ${driverToken}`)
         .send({ status: 'ACCEPTED' });
 
-      expect(response.status).toBe(400);
-      expect(response.body.message).toMatch(/already departed/i);
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('AWAITING_PAYMENT');
     });
   });
 
